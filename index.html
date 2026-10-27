@@ -140,6 +140,17 @@ body.onBot .ctl{display:none}
 .cinfo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}
 .cinfo div{background:var(--card2);border-radius:8px;padding:6px 8px;font-size:12px;color:var(--mut);min-width:0}
 .cinfo b{display:block;color:var(--tx);font-size:14px;font-variant-numeric:tabular-nums}
+
+.livebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#22c55e;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.45);border-radius:999px;padding:3px 9px}
+.live i{width:8px;height:8px;border-radius:50%;background:currentColor;display:inline-block}
+.live.tick i{animation:ping .9s ease-out}
+.live.off{color:#f59e0b;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.5)}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(34,197,94,.9)}100%{box-shadow:0 0 0 9px rgba(34,197,94,0)}}
+.flash{animation:fl .8s ease-out}
+@keyframes fl{0%{background:rgba(59,130,246,.35)}100%{background:transparent}}
+.rbpend{background:rgba(253,224,71,.1);border:1px solid rgba(253,224,71,.55);color:#fde047;border-radius:12px;padding:10px 12px;font-size:13.5px;margin-bottom:10px}
+.cc .pd{margin-top:5px;font-size:11.5px;font-weight:700;color:#fde047}
 @media(min-width:760px){.ccards{grid-template-columns:repeat(5,minmax(0,1fr))}#rbEq{height:260px}#rbPx{height:440px}.cinfo{grid-template-columns:repeat(4,minmax(0,1fr))}}
 </style>
 </head>
@@ -155,9 +166,9 @@ body.onBot .ctl{display:none}
     <div class="seg" id="dirSeg"></div>
     <div class="seg" id="exSeg"></div>
     <div class="cap"><label for="capIn">Starting capital (USD)</label><input id="capIn" type="number" inputmode="decimal" min="1" step="50" value="500"></div>
-    <div class="runbar"><button id="runBtn" aria-label="Run backtest"><span class="spin"></span><span id="runLab">▶ Run</span></button><label class="auto"><input type="checkbox" id="autoIn" checked>Auto-refresh 60s</label></div>
+    <div class="runbar"><button id="runBtn" aria-label="Re-run now (optional, it runs automatically)"><span class="spin"></span><span id="runLab">↻ Re-run</span></button><label class="auto"><input type="checkbox" id="autoIn" checked>Auto-refresh 60s</label></div>
     <div class="runinfo"><span id="runInfo">Last run: –</span><span id="runSetup"></span></div>
-    <div class="stale" id="staleMsg">Settings changed, press ▶ Run to update the results.</div>
+    <div class="stale" id="staleMsg">Settings changed, updating automatically…</div>
   </div>
   <div class="tabs"><button id="tabBot" class="on">Real bot</button><button id="tabSig">Signals</button><button id="tabDet">Coin detail</button><button id="tabPap">Paper (arrows)</button></div>
 
@@ -166,22 +177,24 @@ body.onBot .ctl{display:none}
       <div class="rbtop"><span class="pill stp" id="rbPill"><i></i><span id="rbPillT">LOADING</span></span><span class="pill stale hide" id="rbStalePill">STALE</span><span class="meta" id="rbMode"></span></div>
       <div class="rbdet" id="rbDetail"></div>
       <div class="rbstale hide" id="rbStale"></div>
-      <div class="rbinfo"><b>Data from the 24/7 paper bot, updated every 10 min.</b> Exported <b id="rbExp">–</b> WIB <span id="rbAgo"></span>. This page re-checks every 60 s. Paper trading only: no exchange keys, no real orders.</div>
+      <div class="rbinfo"><b>Data from the 24/7 paper bot, updated every 10 min.</b> Positions as of the export <b id="rbExp">–</b> WIB <span id="rbAgo"></span>; this page re-checks for a new export every 60 s. <b>P&amp;L is marked live</b> in your browser from Binance prices every 5 s. Paper trading only: no exchange keys, no real orders.</div>
       <div class="meta" style="margin-top:6px">The timeframe and pause/resume are changed by messaging the bot in chat (this public page is read-only).</div>
       <div id="rbErr" class="err"></div>
     </div>
     <div class="card">
-      <div class="phead"><div><div class="meta">Paper balance (marked to the live price)</div><div class="big" id="rbBal">–</div><div id="rbPnl" class="meta"></div></div>
+      <div class="livebar"><span class="live" id="rbLive"><i></i><span id="rbLiveT">LIVE</span></span><span class="meta" id="rbLiveAt">connecting to Binance…</span></div>
+      <div class="phead"><div><div class="meta">Paper balance · live mark</div><div class="big" id="rbBal">–</div><div id="rbPnl" class="meta"></div></div>
       <div class="cd">Next <span id="rbTf">–</span> bar close<br><b id="rbCd">–</b><div id="rbCdAt"></div></div></div>
-      <div class="kpis" id="rbKpis" style="margin-top:10px"></div>
+      <div class="kpis" id="rbKpis" style="margin-top:10px"></div><div class="meta" id="rbAsOf" style="margin-top:8px"></div>
     </div>
     <div class="card"><div class="h3">Equity vs buy &amp; hold</div><div class="legend"><span><i class="dot" style="background:#22c55e"></i>Bot equity (USD)</span><span><i class="dot" style="background:#8a93a6"></i>Buy &amp; hold same coins</span></div><div id="rbEq"></div></div>
-    <div class="card"><div class="h3">Coins <span class="meta">· tap a coin for its chart</span></div><div class="ccards" id="rbCards"></div></div>
+    <div class="rbpend hide" id="rbPend"></div>
+    <div class="card"><div class="h3">Coins <span class="meta">· live prices · positions as of <span class="asof">–</span> · tap a coin for its chart</span></div><div class="ccards" id="rbCards"></div></div>
     <div class="card" id="rbChartCard"><div class="h3">Chart · <span id="rbPxT">–</span></div><div class="pseg cseg" id="rbPxSeg"></div>
       <div class="togs" id="rbTogs"></div>
       <div class="legend"><span><i class="dot" style="background:#3b82f6"></i>Baseline</span><span><i class="dot" style="background:#64748b"></i>Channel</span><span><i class="dot" style="background:#a78bfa"></i>Exit line</span><span><i class="dot" style="background:#f59e0b"></i>SSL1</span><span><i class="dot" style="background:#22d3ee"></i>SSL2</span><span><b class="pos">▲</b>/<b class="neg">▼</b> Exit Arrows · <b style="color:#fde047">B</b>/<b style="color:#fde047">S</b> the bot's paper fills</span></div>
       <div id="rbPx"></div><div class="cinfo" id="rbCinfo"></div><div class="meta" id="rbPxNote" style="margin-top:6px"></div></div>
-    <div class="card"><div class="h3">Open positions</div><div class="tblwrap"><table id="rbPos"><thead><tr><th>Coin</th><th>Entry<span class="sub">time WIB</span></th><th>Now</th><th>Unreal. $<span class="sub">%</span></th><th>Bars</th></tr></thead><tbody></tbody></table></div><div class="meta" id="rbPosNote"></div></div>
+    <div class="card"><div class="h3">Open positions <span class="meta">· as of <span class="asof">–</span> WIB, P&amp;L live</span></div><div class="tblwrap"><table id="rbPos"><thead><tr><th>Coin</th><th>Entry<span class="sub">time WIB</span></th><th>Now</th><th>Unreal. $<span class="sub">%</span></th><th>Bars</th></tr></thead><tbody></tbody></table></div><div class="meta" id="rbPosNote"></div></div>
     <div class="card"><div class="h3">Trade log</div>
       <div class="flt"><select id="rbFCoin" aria-label="Filter by coin"></select><div class="pseg" id="rbFRes"></div></div>
       <div class="tblwrap"><table id="rbTr"><thead><tr><th>Closed WIB<span class="sub">opened</span></th><th>Coin</th><th>Entry<span class="sub">exit</span></th><th>$ P&amp;L<span class="sub">%</span></th></tr></thead><tbody></tbody></table></div><div class="meta" id="rbTrNote"></div></div>
@@ -349,12 +362,19 @@ if (typeof module !== "undefined") module.exports = { indicator, backtest, metri
 </script>
 
 <script>
-/* ---- "Real bot" tab: reads ./bot.json exported by the 24/7 paper bot (pushed from the box every 10 min) ---- */
+/* ---- "Real bot" tab ----
+   ./bot.json = the 24/7 paper bot's state, pushed from the box every 10 min (re-fetched here every 60 s).
+   Between exports the page marks the bot's exported positions to live Binance prices every 5 s using the bot's own
+   formula (paper_bot.marked): value = units*price (long) else value_close; unreal = value - cost; bh = alloc*price/bh_c0.
+   It also recomputes the Exit Arrows on bars that closed after the export (same Pine v6 indicator() as the simulation)
+   and shows a "pending" hint only; it never simulates trades into the bot's balance. */
 window.RB = (function () {
   const $ = id => document.getElementById(id);
-  const STALE_MIN = 25, TFMS = { "15m": 9e5, "1h": 36e5, "4h": 144e5 };
+  const STALE_MIN = 25, TFMS = { "15m": 9e5, "1h": 36e5, "4h": 144e5 }, PRICE_MS = 5000;
+  const PX_SRC = [["api.binance.com", "https://api.binance.com/api/v3"], ["data-api.binance.vision", "https://data-api.binance.vision/api/v3"]];
   const WIBF = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
   const WIBH = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", hour12: false });
+  const WIBS = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const num = v => typeof v === "number" && isFinite(v);
   const usd = (v, sign) => !num(v) ? "–" : (v < 0 ? "−$" : (sign && v > 0 ? "+$" : "$")) + Math.abs(v).toFixed(2);
@@ -364,71 +384,159 @@ window.RB = (function () {
   const wib = ms => num(ms) ? WIBF.format(new Date(ms)) : "–";
   const T = ms => Math.floor(ms / 1000) + 7 * 3600;   // charts render UTC; shift so the axis reads WIB
   const prec = p => !num(p) ? 2 : p < 0.001 ? 10 : p < 1 ? 5 : p < 100 ? 3 : 2;
-  let D = null, coin = localStorage.getItem("rbCoin") || null, fCoin = "ALL", fRes = "all", eqC, eqS, bhS, pxC, pxS = {}, lastFetch = 0, loading = false;
+  const onBot = () => document.body.classList.contains("onBot");
+  let D = null, V = null, coin = localStorage.getItem("rbCoin") || null, fCoin = "ALL", fRes = "all", eqC, eqS, bhS, pxC, pxS = {}, lastFetch = 0, loading = false;
+  let LP = {}, lpT = 0, lpSrc = "", lpIdx = 0, lpBusy = false, lpErr = "", pend = {}, pendT = 0;
   const TOG = JSON.parse(localStorage.getItem("rbTogs") || '{"chan":true,"base":true,"exit":true,"ssl1":false,"ssl2":false,"arrows":true,"fills":true}');
-  const chartOpt = el => ({ autoSize: true, layout: { background: { color: "#141923" }, textColor: "#8a93a6", fontSize: 11 }, grid: { vertLines: { color: "#1e2533" }, horzLines: { color: "#1e2533" } }, rightPriceScale: { borderColor: "#262e3f" }, timeScale: { borderColor: "#262e3f", timeVisible: true, secondsVisible: false }, crosshair: { mode: 0 }, handleScroll: { vertTouchDrag: false } });
+  const chartOpt = () => ({ autoSize: true, layout: { background: { color: "#141923" }, textColor: "#8a93a6", fontSize: 11 }, grid: { vertLines: { color: "#1e2533" }, horzLines: { color: "#1e2533" } }, rightPriceScale: { borderColor: "#262e3f" }, timeScale: { borderColor: "#262e3f", timeVisible: true, secondsVisible: false }, crosshair: { mode: 0 }, handleScroll: { vertTouchDrag: false } });
 
-  async function load(force) {
+  // ---------- data ----------
+  async function load() {
     if (loading) return; loading = true;
     try {
       const r = await fetch("./bot.json?t=" + Date.now(), { cache: "no-store" });
       if (!r.ok) throw new Error("HTTP " + r.status + " fetching bot.json");
-      D = await r.json(); lastFetch = Date.now(); $("rbErr").textContent = "";
-      render();
+      const nd = await r.json(), changed = !D || nd.exported_ms !== D.exported_ms;
+      D = nd; lastFetch = Date.now(); $("rbErr").textContent = "";
+      if (changed) { V = view(); render(); arrows(); } else header();
+      if (!lpT) prices();
     } catch (e) {
       $("rbErr").textContent = "Could not load the bot's data (" + e.message + "). Showing the last loaded copy" + (D ? "." : ": none yet.");
       if (D) header();
     } finally { loading = false; }
   }
 
-  function header() {
-    const st = (D.status || "STOPPED").toUpperCase(), ageMin = (Date.now() - D.exported_ms) / 60000, stale = ageMin > STALE_MIN;
-    const pill = $("rbPill"); pill.className = "pill " + (st === "RUNNING" ? "run" : st === "PAUSED" ? "pau" : "stp"); $("rbPillT").textContent = st;
-    $("rbStalePill").classList.toggle("hide", !stale);
-    $("rbStale").classList.toggle("hide", !stale);
-    if (stale) $("rbStale").textContent = `STALE: the last export is ${ageMin >= 120 ? (ageMin / 60).toFixed(1) + " h" : Math.round(ageMin) + " min"} old (expected every 10 min). The box or its publisher may be offline, so the status and numbers below may be out of date.`;
-    $("rbMode").innerHTML = `${esc(D.mode)} · <b>${esc(D.tf)}</b> · since ${esc(D.start_wib)} WIB`;
-    let det = (D.status || "").toUpperCase() === "RUNNING" ? "Bot alive" + (num(D.hb_age_s) ? `, heartbeat ${Math.round(D.hb_age_s)} s before the export` : "") : (D.status_detail || "");
-    if (D.paused) det = `Paused since ${esc(D.paused.since_wib)} WIB: ${esc(D.paused.reason)}. No new entries; exits still follow the rules.`;
-    $("rbDetail").innerHTML = esc(det) + (D.heartbeat_wib ? ` (last heartbeat ${esc(D.heartbeat_wib.slice(11, 19))} WIB)` : "");
-    $("rbExp").textContent = wib(D.exported_ms);
-    $("rbAgo").textContent = `(${ageMin < 1 ? "<1" : Math.round(ageMin)} min ago)`;
-    countdown();
-    if (document.body.classList.contains("onBot")) { $("upd").textContent = "Real bot · exported " + wib(D.exported_ms) + " WIB"; $("src").textContent = ""; }
-  }
-  function countdown() {
-    if (!D) return;
-    const tb = TFMS[D.tf] || 9e5, now = Date.now(), nx = Math.ceil((now + 1) / tb) * tb, s = Math.round((nx - now) / 1000);
-    $("rbTf").textContent = D.tf; $("rbCd").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; $("rbCdAt").textContent = "at " + WIBH.format(new Date(nx)) + " WIB";
+  // the bot's exported state marked to live prices (exact paper_bot.marked() formula); falls back to the export's own mark
+  function view() {
+    const v = Object.assign({}, D), live = lpT > 0;
+    let bal = 0, bh = 0;
+    v.coins = D.coins.map(c0 => {
+      const c = Object.assign({}, c0), k = c0.calc || {}, p = live && num(LP[c0.symbol]) ? LP[c0.symbol] : null;
+      if (p != null) {
+        const long = num(k.units) && k.units > 0;
+        c.price = p; c.value = long ? k.units * p : k.value_close;
+        c.bh_value = num(k.bh_c0) && k.bh_c0 > 0 ? k.alloc * p / k.bh_c0 : k.bh_value_close;
+        c.unreal = long ? c.value - k.cost : null; c.unreal_pct = long ? c.value / k.cost - 1 : null;
+        if (num(c.exit_line)) { c.vs_exit_pct = p / c.exit_line - 1; c.above_exit = p > c.exit_line; }
+        c.live = true;
+      }
+      bal += num(c.value) ? c.value : 0; bh += num(c.bh_value) ? c.bh_value : 0;
+      return c;
+    });
+    if (live && v.coins.every(c => c.live)) {
+      v.balance = bal; v.bh = bh; v.pnl = bal - D.capital; v.pnl_pct = bal / D.capital - 1; v.bh_pct = bh / D.capital - 1; v.vs_bh = bal - bh; v.live = true;
+    }
+    v.open = (D.open || []).map(o => { const c = v.coins.find(x => x.coin === o.coin); return c && c.live ? Object.assign({}, o, { price: c.price, unreal: c.unreal, unreal_pct: c.unreal_pct }) : o; });
+    return v;
   }
 
-  function render() {
-    header();
-    $("rbBal").textContent = usd(D.balance);
-    $("rbPnl").innerHTML = `<span class="${cls(D.pnl)}">${usd(D.pnl, 1)} (${pct(D.pnl_pct)})</span> on ${usd(D.capital)} · vs buy &amp; hold <span class="${cls(D.vs_bh)}">${usd(D.vs_bh, 1)}</span>`;
-    const k = [["Buy & hold", usd(D.bh), pct(D.bh_pct), cls(D.bh_pct)], ["Fees paid", usd(D.fees), "0.1% per side", ""],
-      ["Win rate", num(D.win_rate) ? (D.win_rate * 100).toFixed(0) + "%" : "–", `${D.wins ?? 0} W / ${D.losses ?? 0} L`, ""], ["Trades", String(D.n_trades ?? 0), `${(D.open || []).length} open now`, ""],
-      ["Max drawdown", pct(D.max_dd_pct), usd(-Math.abs(D.max_dd_usd || 0)), "neg"], ["Profit factor", num(D.profit_factor) ? D.profit_factor.toFixed(2) : "–", "gross win / gross loss", ""],
-      ["Realised P&L", usd(D.realised, 1), "closed trades", cls(D.realised)], ["Exposure", num(D.exposure_pct) ? (D.exposure_pct * 100).toFixed(0) + "%" : "–", "time in the market", ""]];
+  async function prices() {
+    if (!D || lpBusy) return; lpBusy = true;
+    const syms = JSON.stringify(D.coins.map(c => c.symbol || c.coin + "USDT"));
+    try {
+      let ok = false;
+      for (let k = 0; k < PX_SRC.length && !ok; k++) {
+        const i = (lpIdx + k) % PX_SRC.length, ac = new AbortController(), to = setTimeout(() => ac.abort(), 4000);
+        try {
+          const r = await fetch(`${PX_SRC[i][1]}/ticker/price?symbols=${encodeURIComponent(syms)}`, { signal: ac.signal, cache: "no-store" });
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const a = await r.json(); a.forEach(x => LP[x.symbol] = +x.price);
+          lpT = Date.now(); lpSrc = PX_SRC[i][0]; lpIdx = i; lpErr = ""; ok = true;
+        } catch (e) { lpErr = PX_SRC[i][0] + ": " + (e.name === "AbortError" ? "timeout" : e.message); }
+        finally { clearTimeout(to); }
+      }
+      if (ok) { V = view(); numbers(); cards(); positions(); cinfo(); equityLive(); livePriceLine(); const l = $("rbLive"); l.classList.remove("tick"); void l.offsetWidth; l.classList.add("tick"); }
+      liveBadge();
+    } finally { lpBusy = false; }
+  }
+  function liveBadge() {
+    const age = lpT ? (Date.now() - lpT) / 1000 : Infinity, ok = age < 20;
+    $("rbLive").className = "live" + (ok ? "" : " off"); $("rbLiveT").textContent = ok ? "LIVE" : lpT ? "PRICES LAGGING" : "OFFLINE";
+    $("rbLiveAt").textContent = lpT ? `prices ${WIBS.format(new Date(lpT))} WIB (${Math.round(age)} s ago) · ${lpSrc}${!ok && lpErr ? " · " + lpErr : ""}` : (lpErr ? "Binance prices unavailable (" + lpErr + "), showing the export's mark" : "connecting to Binance…");
+  }
+
+  // Exit Arrows on bars that closed after the export: hint only, never traded into the balance
+  async function arrows() {
+    if (!D || typeof indicator !== "function" || D.mode !== "arrow_long") return;
+    const tf = D.tf, tb = TFMS[tf] || 9e5; pendT = Date.now(); const out = {};
+    await Promise.all(D.coins.map(async c => {
+      for (const [, base] of PX_SRC) {
+        try {
+          const r = await fetch(`${base}/klines?symbol=${c.symbol}&interval=${tf}&limit=600`, { cache: "no-store" }); if (!r.ok) throw new Error(r.status);
+          const rows = (await r.json()).filter(x => Number(x[6]) < Date.now());
+          const d = { t: rows.map(x => Number(x[0])), o: rows.map(x => +x[1]), h: rows.map(x => +x[2]), l: rows.map(x => +x[3]), c: rows.map(x => +x[4]) };
+          const ind = indicator(d), n = d.t.length; let hit = null, chk = 0, ok = 0;
+          for (let i = n - 1; i >= 0 && d.t[i] > (c.bar_ms || 0); i--) if (ind.arrow[i] && !hit) hit = { dir: ind.arrow[i] > 0 ? "up" : "down", t: d.t[i] };
+          // self-check against the bot's own arrows on the overlapping bars
+          const au = new Set((c.chart && c.chart.au) || []), ad = new Set((c.chart && c.chart.ad) || []), t0 = c.chart && c.chart.t ? c.chart.t[0] : Infinity;
+          for (let i = 0; i < n; i++) if (d.t[i] >= t0 && d.t[i] <= c.bar_ms) { chk++; if ((ind.arrow[i] > 0) === au.has(d.t[i]) && (ind.arrow[i] < 0) === ad.has(d.t[i])) ok++; }
+          const long = c.pos === "long";
+          let act = null;
+          if (hit && hit.dir === "up" && !long) act = "BUY"; else if (hit && hit.dir === "down" && long) act = "SELL";
+          out[c.coin] = { hit, act, lastClosed: d.t[n - 1], match: chk ? ok / chk : null, nextOpen: d.t[n - 1] + 2 * tb };
+          return;
+        } catch (e) { }
+      }
+    }));
+    pend = out; window.__rbArrows = out; pendBanner(); cards();
+  }
+  function pendBanner() {
+    const a = Object.entries(pend).filter(([, p]) => p.act);
+    $("rbPend").classList.toggle("hide", !a.length);
+    $("rbPend").innerHTML = a.length ? `<b>⏳ Pending (from bars closed after the export):</b><br>` + a.map(([c, p]) => `${esc(c)}: ${p.hit.dir === "up" ? "▲ up" : "▼ down"} arrow on the ${esc(D.tf)} bar opened ${WIBH.format(new Date(p.hit.t))} WIB → the bot will <b>${p.act}</b> at the next open (shows here after its next export).`).join("<br>") + `<div class="meta" style="color:inherit;opacity:.8;margin-top:4px">Hint only: computed in your browser with the same indicator; the balance above is not changed by it.</div>` : "";
+  }
+
+  // ---------- render ----------
+  function header() {
+    const st = (D.status || "STOPPED").toUpperCase(), ageMin = (Date.now() - D.exported_ms) / 60000, stale = ageMin > STALE_MIN;
+    $("rbPill").className = "pill " + (st === "RUNNING" ? "run" : st === "PAUSED" ? "pau" : "stp"); $("rbPillT").textContent = st;
+    $("rbStalePill").classList.toggle("hide", !stale); $("rbStale").classList.toggle("hide", !stale);
+    if (stale) $("rbStale").textContent = `STALE: the last export is ${ageMin >= 120 ? (ageMin / 60).toFixed(1) + " h" : Math.round(ageMin) + " min"} old (expected every 10 min). The box or its publisher may be offline, so the status and positions below may be out of date (prices are still live).`;
+    $("rbMode").innerHTML = `${esc(D.mode)} · <b>${esc(D.tf)}</b> · since ${esc(D.start_wib)} WIB`;
+    let det = st === "RUNNING" ? "Bot alive" + (num(D.hb_age_s) ? `, heartbeat ${Math.round(D.hb_age_s)} s before the export` : "") : (D.status_detail || "");
+    if (D.paused) det = `Paused since ${D.paused.since_wib} WIB: ${D.paused.reason}. No new entries; exits still follow the rules.`;
+    $("rbDetail").textContent = det + (D.heartbeat_wib ? ` (last heartbeat ${D.heartbeat_wib.slice(11, 19)} WIB)` : "");
+    $("rbExp").textContent = wib(D.exported_ms); $("rbAgo").textContent = `(${ageMin < 1 ? "<1" : Math.round(ageMin)} min ago)`;
+    document.querySelectorAll("#vBot .asof").forEach(e => e.textContent = WIBH.format(new Date(D.positions_as_of_ms || D.exported_ms)));
+    const tb = TFMS[D.tf] || 9e5, now = Date.now(), nx = Math.ceil((now + 1) / tb) * tb, s = Math.round((nx - now) / 1000);
+    $("rbTf").textContent = D.tf; $("rbCd").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; $("rbCdAt").textContent = "at " + WIBH.format(new Date(nx)) + " WIB";
+    if (onBot()) { $("upd").textContent = "Real bot · exported " + wib(D.exported_ms) + " WIB"; $("src").textContent = V && V.live ? "· live P&L" : ""; }
+    liveBadge();
+  }
+  function render() { header(); numbers(); equity(); cards(); if (!coin || !D.coins.some(c => c.coin === coin)) coin = D.coins[0] && D.coins[0].coin; coinChart(false); positions(); filters(); trades(); events(); rules(); pendBanner(); }
+
+  function numbers() {
+    $("rbBal").textContent = usd(V.balance); $("rbBal").classList.remove("flash"); void $("rbBal").offsetWidth; if (V.live) $("rbBal").classList.add("flash");
+    $("rbPnl").innerHTML = `<span class="${cls(V.pnl)}" id="rbPnlV">${usd(V.pnl, 1)} (${pct(V.pnl_pct, 3)})</span> on ${usd(D.capital)} · vs buy &amp; hold <span class="${cls(V.vs_bh)}">${usd(V.vs_bh, 1)}</span>`;
+    const unr = V.open.reduce((a, p) => a + (p.unreal || 0), 0);
+    const k = [["Buy & hold" + (V.live ? " · live" : ""), usd(V.bh), pct(V.bh_pct), cls(V.bh_pct)], ["Unrealised · live", usd(unr, 1), `${V.open.length} open position${V.open.length === 1 ? "" : "s"}`, cls(unr)],
+      ["Realised P&L", usd(D.realised, 1), "closed trades", cls(D.realised)], ["Fees paid", usd(D.fees), "0.1% per side", ""],
+      ["Win rate", num(D.win_rate) ? (D.win_rate * 100).toFixed(0) + "%" : "–", `${D.wins ?? 0} W / ${D.losses ?? 0} L`, ""], ["Trades", String(D.n_trades ?? 0), "closed round trips", ""],
+      ["Max drawdown", pct(D.max_dd_pct), usd(-Math.abs(D.max_dd_usd || 0)) + " (bar closes)", "neg"], ["Profit factor", num(D.profit_factor) ? D.profit_factor.toFixed(2) : "–", `exposure ${num(D.exposure_pct) ? (D.exposure_pct * 100).toFixed(0) + "%" : "–"}`, ""]];
     $("rbKpis").innerHTML = k.map(([l, v, s, c]) => `<div class="kpi"><div class="l">${esc(l)}</div><div class="v ${c}">${esc(v)}</div><div class="s">${esc(s)}</div></div>`).join("");
-    equity(); cards(); if (!coin || !D.coins.some(c => c.coin === coin)) coin = D.coins[0] && D.coins[0].coin; coinChart(false);
-    positions(); filters(); trades(); events(); rules();
+    $("rbAsOf").innerHTML = `Positions, cash, realised P&amp;L and stats as of the export ${esc(wib(D.positions_as_of_ms || D.exported_ms))} WIB (bot's mark then: ${usd(D.balance)}). ` + (V.live ? "Balance, unrealised and buy &amp; hold above are re-marked to live Binance prices every 5 s." : "Live prices not available yet: showing the export's mark.");
   }
 
   function equity() {
     if (!eqC) { eqC = LightweightCharts.createChart($("rbEq"), Object.assign(chartOpt(), { localization: { priceFormatter: v => "$" + v.toFixed(2) } })); eqS = eqC.addLineSeries({ color: "#22c55e", lineWidth: 2 }); bhS = eqC.addLineSeries({ color: "#8a93a6", lineWidth: 1, lineStyle: 2 }); }
     const seen = new Set(), e = [], b = [];
     (D.equity || []).forEach(p => { const t = T(p.t); if (seen.has(t)) return; seen.add(t); if (num(p.eq)) e.push({ time: t, value: p.eq }); if (num(p.bh)) b.push({ time: t, value: p.bh }); });
-    eqS.setData(e); bhS.setData(b); eqC.timeScale().fitContent();
+    eqS.setData(e); bhS.setData(b); equity.lastT = e.length ? e[e.length - 1].time : 0; eqC.timeScale().fitContent(); equityLive();
+  }
+  function equityLive() {   // append the live mark (one point per 5 s price update)
+    if (!eqS || !V || !V.live) return; const t = T(lpT); if (t <= (equity.lastT || 0)) return;
+    eqS.update({ time: t, value: V.balance }); bhS.update({ time: t, value: V.bh }); equity.lastT = t;
   }
 
   function cards() {
-    $("rbCards").innerHTML = D.coins.map(c => {
+    if (!V) return;
+    $("rbCards").innerHTML = V.coins.map(c => {
       const up = c.arrow === "up", ar = c.arrow ? `<b class="${up ? "pos" : "neg"}">${up ? "▲" : "▼"}</b> ${esc((c.arrow_wib || "").slice(11))}${num(c.bars_since) ? ` (${c.bars_since} bars)` : ""}` : "no arrow";
       const ex = num(c.vs_exit_pct) ? `<span class="${c.vs_exit_pct >= 0 ? "pos" : "neg"}">${c.vs_exit_pct >= 0 ? "above" : "below"} exit ${pct(c.vs_exit_pct)}</span>` : "";
-      const pl = c.pos === "long" ? `<span class="${cls(c.unreal)}">${usd(c.unreal, 1)} (${pct(c.unreal_pct)})</span><br>entry ${px(c.entry)}` : `value ${usd(c.value)}`;
+      const pl = c.pos === "long" ? `<span class="${cls(c.unreal)}">${usd(c.unreal, 1)} (${pct(c.unreal_pct)})</span><br>entry ${px(c.entry)}` : `cash ${usd(c.value)}`;
+      const p = pend[c.coin], pd = p && p.act ? `<div class="pd">⏳ pending: bot will ${p.act} at next open</div>` : "";
       return `<button class="cc${c.coin === coin ? " sel" : ""}" data-c="${esc(c.coin)}"><div class="t"><span class="n">${esc(c.coin)}</span><span class="${c.pos === "long" ? "tagL" : "tagC"}">${c.pos === "long" ? "LONG" : "CASH"}</span></div>
-        <div class="px">${px(c.price)}</div><div class="m">${pl}<br>Last ${ar}<br>${ex}</div></button>`;
+        <div class="px">${px(c.price)}</div><div class="m">${pl}<br>Last ${ar}<br>${ex}</div>${pd}</button>`;
     }).join("");
     $("rbCards").querySelectorAll(".cc").forEach(b => b.onclick = () => { coin = b.dataset.c; localStorage.setItem("rbCoin", coin); cards(); coinChart(true); });
   }
@@ -438,7 +546,12 @@ window.RB = (function () {
     $("rbTogs").innerHTML = L.map(([k, l]) => `<label><input type="checkbox" data-k="${k}" ${TOG[k] ? "checked" : ""}>${l}</label>`).join("");
     $("rbTogs").querySelectorAll("input").forEach(i => i.onchange = () => { TOG[i.dataset.k] = i.checked; localStorage.setItem("rbTogs", JSON.stringify(TOG)); coinChart(false); });
   }
-
+  let livePL = null;
+  function livePriceLine() {
+    const c = V && V.coins.find(x => x.coin === coin); if (!pxS.c || !c || !c.live) return;
+    if (livePL) { try { pxS.c.removePriceLine(livePL); } catch (e) {} }
+    livePL = pxS.c.createPriceLine({ price: c.price, color: "#93c5fd", lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title: "live" });
+  }
   function coinChart(scroll) {
     const c = D.coins.find(x => x.coin === coin); if (!c) return;
     $("rbPxSeg").innerHTML = D.coins.map(x => `<button class="${x.coin === coin ? "on" : ""}" data-c="${esc(x.coin)}">${esc(x.coin)}</button>`).join("");
@@ -447,7 +560,7 @@ window.RB = (function () {
     $("rbPxT").textContent = `${c.coin}/USDT · ${D.tf}`;
     const ch = c.chart;
     if (!pxC) pxC = LightweightCharts.createChart($("rbPx"), chartOpt());
-    Object.values(pxS).forEach(s => { try { pxC.removeSeries(s); } catch (e) {} }); pxS = {};
+    Object.values(pxS).forEach(s => { try { pxC.removeSeries(s); } catch (e) {} }); pxS = {}; livePL = null;
     if (!ch || !ch.t || !ch.t.length) { $("rbPxNote").textContent = "No chart data for this coin yet."; return; }
     const pf = { type: "price", precision: prec(c.price), minMove: Math.pow(10, -prec(c.price)) };
     const line = (k, color, w, style) => { const s = pxC.addLineSeries({ color, lineWidth: w, lineStyle: style || 0, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, priceFormat: pf });
@@ -457,7 +570,7 @@ window.RB = (function () {
     if (TOG.ssl1) line("ssl1", "#f59e0b", 1);
     if (TOG.ssl2) line("ssl2", "#22d3ee", 1);
     if (TOG.exit) line("exit", "#a78bfa", 2);
-    const cs = pxC.addCandlestickSeries({ upColor: "#22c55e", downColor: "#ef4444", borderVisible: false, wickUpColor: "#22c55e", wickDownColor: "#ef4444", priceFormat: pf });
+    const cs = pxC.addCandlestickSeries({ upColor: "#22c55e", downColor: "#ef4444", borderVisible: false, wickUpColor: "#22c55e", wickDownColor: "#ef4444", priceFormat: pf, priceLineVisible: false });
     cs.setData(ch.t.map((t, i) => ({ time: T(t), open: ch.o[i], high: ch.h[i], low: ch.l[i], close: ch.c[i] }))); pxS.c = cs;
     const tset = new Set(ch.t), m = [];
     if (TOG.arrows) { (ch.au || []).forEach(t => tset.has(t) && m.push({ time: T(t), position: "belowBar", color: "#22c55e", shape: "arrowUp", size: 1 }));
@@ -467,19 +580,23 @@ window.RB = (function () {
     if (c.pos === "long" && num(c.entry)) cs.createPriceLine({ price: c.entry, color: "#fde047", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "entry" });
     const n = ch.t.length, vis = window.innerWidth < 760 ? 80 : 150;
     if (n > vis) pxC.timeScale().setVisibleLogicalRange({ from: n - vis, to: n + 1 }); else pxC.timeScale().fitContent();
-    const I = [["Position", c.pos === "long" ? "LONG" : "CASH"], ["Price", px(c.price)], ["Entry", c.pos === "long" ? px(c.entry) : "–"], ["Unrealised", c.pos === "long" ? usd(c.unreal, 1) + " · " + pct(c.unreal_pct) : "–"],
-      ["Exit line", px(c.exit_line)], ["Price vs exit", num(c.vs_exit_pct) ? pct(c.vs_exit_pct) + (c.above_exit ? " above" : " below") : "–"], ["Last arrow", c.arrow ? (c.arrow === "up" ? "▲ up " : "▼ down ") + (c.arrow_wib || "").slice(11) : "–"], ["Baseline", px(c.baseline)],
-      ["Realised", usd(c.realised, 1)], ["Trades", String(c.trades ?? 0)], ["Value now", usd(c.value)], ["Buy & hold value", usd(c.bh_value)]];
-    $("rbCinfo").innerHTML = I.map(([l, v]) => `<div>${esc(l)}<b>${esc(v)}</b></div>`).join("");
-    $("rbPxNote").textContent = `Last ${ch.t.length} closed ${D.tf} bars up to ${wib(ch.t[ch.t.length - 1])} WIB (bar open), from the bot's own indicator output. Times in WIB. Drag or pinch to scroll back/zoom (all 150 bars are loaded).`;
+    livePriceLine(); cinfo();
+    $("rbPxNote").textContent = `Last ${n} closed ${D.tf} bars up to the bar opened ${wib(ch.t[n - 1])} WIB, from the bot's own indicator output (the dotted blue "live" line is the current price). Drag or pinch to scroll back/zoom.`;
     if (scroll) $("rbChartCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function cinfo() {
+    const c = V && V.coins.find(x => x.coin === coin); if (!c) return;
+    const I = [["Position", c.pos === "long" ? "LONG" : "CASH"], ["Price" + (c.live ? " · live" : ""), px(c.price)], ["Entry", c.pos === "long" ? px(c.entry) : "–"], ["Unrealised", c.pos === "long" ? usd(c.unreal, 1) + " · " + pct(c.unreal_pct) : "–"],
+      ["Exit line", px(c.exit_line)], ["Price vs exit", num(c.vs_exit_pct) ? pct(c.vs_exit_pct) + (c.above_exit ? " above" : " below") : "–"], ["Last arrow", c.arrow ? (c.arrow === "up" ? "▲ up " : "▼ down ") + (c.arrow_wib || "").slice(11) : "–"], ["Baseline", px(c.baseline)],
+      ["Units", num(c.units) ? String(+c.units.toPrecision(6)) : "–"], ["Realised", usd(c.realised, 1)], ["Value now", usd(c.value)], ["Buy & hold value", usd(c.bh_value)]];
+    $("rbCinfo").innerHTML = I.map(([l, v]) => `<div>${esc(l)}<b>${esc(v)}</b></div>`).join("");
   }
 
   function positions() {
-    const o = D.open || [];
+    if (!V) return; const o = V.open || [];
     $("rbPos").tBodies[0].innerHTML = o.map(p => `<tr><td><b>${esc(p.coin)}</b></td><td>${px(p.entry)}<span class="sub">${esc(p.entry_wib)}</span></td><td>${px(p.price)}</td><td class="${cls(p.unreal)}">${usd(p.unreal, 1)}<span class="sub">${pct(p.unreal_pct)}</span></td><td>${num(p.bars) ? p.bars.toFixed(0) : "–"}</td></tr>`).join("");
     const tot = o.reduce((a, p) => a + (p.unreal || 0), 0);
-    $("rbPosNote").innerHTML = o.length ? `${o.length} open · unrealised <span class="${cls(tot)}">${usd(tot, 1)}</span>` : "No open positions: all coins are in cash.";
+    $("rbPosNote").innerHTML = o.length ? `${o.length} open · unrealised <span class="${cls(tot)}">${usd(tot, 1)}</span>${V.live ? " (live)" : ""} · bars = bars held at the export` : "No open positions: all coins are in cash.";
   }
 
   function filters() {
@@ -489,29 +606,29 @@ window.RB = (function () {
     $("rbFRes").innerHTML = [["all", "All"], ["win", "Wins"], ["loss", "Losses"]].map(([k, l]) => `<button data-k="${k}" class="${fRes === k ? "on" : ""}">${l}</button>`).join("");
     $("rbFRes").querySelectorAll("button").forEach(b => b.onclick = () => { fRes = b.dataset.k; filters(); trades(); });
   }
-
   function trades() {
     const t = (D.trades || []).filter(x => (fCoin === "ALL" || x.coin === fCoin) && (fRes === "all" || (fRes === "win" ? x.pnl > 0 : x.pnl <= 0)));
     $("rbTr").tBodies[0].innerHTML = t.map(x => `<tr><td>${esc((x.out || "").slice(5))}<span class="sub">${esc((x.in || "").slice(5))}</span></td><td><b>${esc(x.coin)}</b><span class="sub">${esc(x.tf || "")}</span></td><td>${px(x.entry)}<span class="sub">${px(x.exit)}</span></td><td class="${cls(x.pnl)}">${usd(x.pnl, 1)}<span class="sub">${pct(x.ret)}</span></td></tr>`).join("") || `<tr><td colspan="4" class="empty">No closed trades match this filter.</td></tr>`;
     const s = t.reduce((a, x) => a + (x.pnl || 0), 0), w = t.filter(x => x.pnl > 0).length;
     $("rbTrNote").innerHTML = `${t.length} trade${t.length === 1 ? "" : "s"} · ${w} win${w === 1 ? "" : "s"} · total <span class="${cls(s)}">${usd(s, 1)}</span> (fees included). Newest first; the export keeps the last 200.`;
   }
-
   function events() {
     $("rbEv").innerHTML = (D.events || []).map(e => `<div class="ev"><span class="w">${esc((e.wib || "").slice(5, 16))}</span><span class="k ${esc(e.kind)}">${esc((e.kind || "").replace("_", " "))}</span><span class="x">${esc(e.msg)}</span></div>`).join("") || `<div class="empty">No events.</div>`;
   }
-
   function rules() {
     const r = D.rules || {};
     const sw = [...(D.mode_switches || []).map(s => `${s.at} mode ${s.from}→${s.to}`), ...(D.tf_switches || []).map(s => `${s.at} timeframe ${s.from}→${s.to}`)].sort();
-    $("rbRules").innerHTML = `<b>Rules:</b> ${esc(D.mode_text || D.mode)}. Entry: ${esc(r.entry || "–")}. Exit: ${esc(r.exit || "–")}. Fill: ${esc(r.fill || "–")}. Fee ${num(r.fee) ? (r.fee * 100).toFixed(2) + "%" : "–"} per side. Capital ${usd(D.capital)} split over ${D.coins.map(c => esc(c.coin)).join(", ")} since ${esc(D.start_wib)} WIB. Prices: ${esc(D.source || "Binance")}.` +
+    $("rbRules").innerHTML = `<b>Rules:</b> ${esc(D.mode_text || D.mode)}. Entry: ${esc(r.entry || "–")}. Exit: ${esc(r.exit || "–")}. Fill: ${esc(r.fill || "–")}. Fee ${num(r.fee) ? (r.fee * 100).toFixed(2) + "%" : "–"} per side. Capital ${usd(D.capital)} split over ${D.coins.map(c => esc(c.coin)).join(", ")} since ${esc(D.start_wib)} WIB. Bot prices: ${esc(D.source || "Binance")}.` +
       (sw.length ? `<br><b>Switches:</b> ${sw.map(esc).join(" · ")}` : "") + `<br>Paper simulation only, not financial advice.`;
   }
 
-  setInterval(() => { if (D && document.body.classList.contains("onBot")) { header(); } }, 1000);
-  setInterval(() => { if (document.body.classList.contains("onBot") && !document.hidden) load(); }, 60000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && document.body.classList.contains("onBot") && Date.now() - lastFetch > 30000) load(); });
-  return { load, show() { if (!D || Date.now() - lastFetch > 30000) load(); else setTimeout(() => { eqC && eqC.timeScale().fitContent(); }, 0); } };
+  // ---------- timers ----------
+  setInterval(() => { if (D && onBot()) header(); }, 1000);
+  setInterval(() => { if (onBot() && !document.hidden) prices(); }, PRICE_MS);
+  setInterval(() => { if (onBot() && !document.hidden) load(); }, 60000);
+  setInterval(() => { if (D && onBot() && !document.hidden) { const tb = TFMS[D.tf] || 9e5; if (Math.floor(Date.now() / tb) !== Math.floor(pendT / tb) && Date.now() % tb > 20000) arrows(); } }, 10000);   // new bar closed -> re-check arrows
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && onBot()) { prices(); if (Date.now() - lastFetch > 30000) load(); } });
+  return { load, show() { if (!D || Date.now() - lastFetch > 30000) load(); else { prices(); setTimeout(() => { eqC && eqC.timeScale().fitContent(); }, 0); } } };
 })();
 </script>
 
@@ -622,7 +739,7 @@ document.querySelectorAll("#sigT th").forEach(th => th.onclick = () => { const k
 $("refresh").onclick = () => S.tab === "bot" ? RB.load() : refreshAll();
 $("capIn").value = S.cap;
 $("capIn").addEventListener("change", () => { const v = parseFloat($("capIn").value); S.cap = isFinite(v) && v > 0 ? v : 500; $("capIn").value = S.cap; save(); markStale(); });
-$("capIn").addEventListener("input", () => { const v = parseFloat($("capIn").value); if (isFinite(v) && v > 0 && v !== R.cap) document.body.classList.add("isStale"); });
+$("capIn").addEventListener("input", () => { const v = parseFloat($("capIn").value); if (isFinite(v) && v > 0 && v !== R.cap) { document.body.classList.add("isStale"); S.cap = v; save(); autoRun(900); } });
 
 function progress() { $("prog").style.width = total ? (100*done/total) + "%" : "0"; if (done >= total) setTimeout(() => { if (done >= total) $("prog").style.width = "0"; }, 400); }
 function stamp() {
@@ -1003,7 +1120,9 @@ let running = null, runMode = null, runTab = "sig";
 function runKey() { return SETKEYS.map(k => R[k]).join("|"); }
 function setupText(o) { return `${o.tf} · ${o.dir === "ls" ? "Long+Short" : "Long-only"} · ${o.ex === "exitssl" ? "Exit SSL" : "Baseline exit"} · ${fmtUsd(o.cap)}${S.tab === "det" ? " · " + o.coin : ""}`; }
 function isStale() { return S.tab === "bot" ? false : S.tab === "pap" ? papKey(P) !== papKey(PR) : SETKEYS.some(k => S[k] !== R[k]); }
-function markStale() { document.body.classList.toggle("isStale", isStale()); $("runBtn").classList.toggle("attn", isStale()); $("runSetup").textContent = "Showing: " + (S.tab === "pap" ? papText(PR) : setupText(R)); }
+var autoT = null;
+function autoRun(ms) { clearTimeout(autoT); autoT = setTimeout(() => { if (S.tab !== "bot" && isStale()) runNow(); }, ms || 450); }   // any settings change re-runs by itself
+function markStale() { if (S.tab !== "bot" && isStale()) autoRun(); document.body.classList.toggle("isStale", isStale()); $("runBtn").classList.toggle("attn", isStale()); $("runSetup").textContent = "Showing: " + (S.tab === "pap" ? papText(PR) : setupText(R)); }
 function runProgress() {
   if (!running) return;
   if (runTab === "pap") { $("runLab").textContent = papRun.total ? `Running… ${papRun.n}/${papRun.total} coins` : "Running…"; return; }
@@ -1018,7 +1137,7 @@ function work(mode) {   // mode: "run" (button / first load) or "auto" (60 s ref
       else if (runTab === "det") await loadDetail(mode === "run" ? true : !pChart);
       else await loadSignals();
       if (mode === "run") $("runInfo").textContent = "Last run: " + WIB.format(new Date()) + " WIB";
-    } finally { running = null; $("runBtn").disabled = false; $("refresh").disabled = false; $("runLab").textContent = "▶ Run"; markStale(); }
+    } finally { running = null; $("runBtn").disabled = false; $("refresh").disabled = false; $("runLab").textContent = "↻ Re-run"; markStale(); }
   })();
   running = p; return p;
 }
@@ -1043,6 +1162,7 @@ function ensureView() {   // a tab switch shows the last run; it only fetches if
 $("runBtn").onclick = () => runNow();
 $("autoIn").checked = !!S.auto;
 $("autoIn").onchange = () => { S.auto = $("autoIn").checked; save(); };
+S.auto = true; save();   // auto-refresh is always on at page load
 selectCoin(S.coin); setTab(S.tab, false); markStale();
 if (S.tab === "bot") RB.show(); else runNow();   // first load: run with the saved (or default) settings so the page is never empty
 setInterval(() => { if (S.auto && !document.hidden) refreshAll(); }, 60000);
