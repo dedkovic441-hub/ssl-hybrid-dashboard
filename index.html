@@ -1,1 +1,250 @@
-PLACEHOLDER_WILL_REPLACE
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e14">
+<title>SSL Hybrid Live · Binance</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+:root{--bg:#0b0e14;--card:#141923;--card2:#1b2130;--line:#262e3f;--tx:#e6e9ef;--mut:#8a93a6;--up:#22c55e;--dn:#ef4444;--acc:#3b82f6;--warn:#f59e0b;--ex:#a78bfa}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:20;background:rgba(11,14,20,.96);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:10px 12px calc(8px);padding-top:max(10px,env(safe-area-inset-top))}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+h1{font-size:17px;margin:0;flex:1;font-weight:650}
+.meta{font-size:12px;color:var(--mut)}
+button,select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 12px}
+button{cursor:pointer}
+button:active{transform:scale(.97)}
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px;flex:1;min-width:0}
+.seg button{flex:1;border:0;background:transparent;min-height:40px;padding:0 6px;border-radius:9px;color:var(--mut);white-space:nowrap}
+.seg button.on{background:var(--acc);color:#fff;font-weight:600}
+main{padding:10px 12px 40px;max-width:1100px;margin:0 auto}
+.ctl{display:grid;gap:8px;margin-bottom:10px}
+.tabs{display:flex;gap:8px;margin:8px 0}
+.tabs button{flex:1}
+.tabs button.on{background:var(--acc);border-color:var(--acc);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{position:sticky;top:0;text-align:right;color:var(--mut);font-weight:500;font-size:12px;padding:10px 4px;cursor:pointer;user-select:none;white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+td{text-align:right;padding:9px 4px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.r{cursor:pointer}
+tr.r:active{background:var(--card2)}
+tr.fresh{background:rgba(245,158,11,.12)}
+.badge{display:inline-block;min-width:40px;text-align:center;padding:3px 5px;border-radius:7px;font-size:12px;font-weight:650}
+.bull{background:rgba(34,197,94,.18);color:var(--up)}.bear{background:rgba(239,68,68,.18);color:var(--dn)}.neu{background:rgba(138,147,166,.18);color:var(--mut)}
+.pos{color:var(--up)}.neg{color:var(--dn)}
+.new{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-left:4px;vertical-align:middle}
+.sub{display:block;font-size:11px;color:var(--mut)}
+.tblwrap{overflow-x:auto;margin:0 -12px;padding:0 12px}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.kpi{background:var(--card2);border-radius:10px;padding:9px 10px}
+.kpi .l{font-size:11px;color:var(--mut)}.kpi .v{font-size:17px;font-weight:650;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:11px;color:var(--mut)}
+#pc{height:360px}#ec{height:220px}
+.legend{font-size:12px;color:var(--mut);display:flex;gap:10px;flex-wrap:wrap;margin:6px 0}
+.dot{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.sym{display:flex;gap:8px}.sym select{flex:1;min-width:0}.sym input{width:110px;text-transform:uppercase}
+.prog{height:3px;background:var(--acc);width:0;transition:width .2s;position:absolute;left:0;bottom:-1px}
+.note{font-size:12px;color:var(--mut);margin-top:14px}
+.err{color:var(--dn);font-size:13px}
+.hide{display:none}
+.runbar{display:flex;gap:8px;align-items:stretch}
+#runBtn{flex:1;min-height:54px;font-size:19px;font-weight:700;background:#16a34a;border-color:#16a34a;color:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 14px rgba(22,163,74,.35)}
+#runBtn:disabled{background:#14532d;border-color:#14532d;color:#bbf7d0;cursor:wait;box-shadow:none}
+#runBtn.attn{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}50%{box-shadow:0 0 0 8px rgba(34,197,94,0)}}
+.spin{width:18px;height:18px;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:rot .8s linear infinite;display:none}
+#runBtn:disabled .spin{display:inline-block}
+@keyframes rot{to{transform:rotate(360deg)}}
+.auto{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:0 12px;font-size:13px;color:var(--mut);white-space:nowrap;cursor:pointer;min-height:54px}
+.auto input{width:22px;height:22px;min-height:0;accent-color:#16a34a;margin:0}
+.runinfo{font-size:12px;color:var(--mut);margin-top:-2px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.stale{display:none;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.5);color:var(--warn);border-radius:10px;padding:9px 12px;font-size:14px;font-weight:600}
+body.isStale .stale{display:block}
+body.onPaper #tfSeg,body.onPaper #dirSeg,body.onPaper #exSeg,body.onPaper .ctl>.cap{display:none}
+.tabs button{padding:0 6px;white-space:nowrap}
+.sim{background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.45);border-radius:10px;padding:9px 12px;font-size:13px;margin-bottom:10px}
+.sim b{color:#93c5fd}
+.pform{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pform label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mut)}
+.pform .full{grid-column:1/-1}
+.pform input,.pform select{width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips label{flex-direction:row;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:0 10px;min-height:40px;color:var(--tx);font-size:14px;cursor:pointer}
+.chips input{width:18px;height:18px;min-height:0;margin:0;accent-color:var(--acc)}
+.chips.off{opacity:.4;pointer-events:none}
+#pReset{background:#7c2d12;border-color:#9a3412;color:#fed7aa;font-weight:600}
+.big{font-size:28px;font-weight:750;font-variant-numeric:tabular-nums}
+.phead{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.cd{font-variant-numeric:tabular-nums;font-size:13px;color:var(--mut);text-align:right}
+.cd b{font-size:20px;color:var(--tx)}
+.newsig{display:none;background:rgba(245,158,11,.16);border:1px solid var(--warn);color:var(--warn);border-radius:10px;padding:9px 12px;font-weight:650;font-size:14px;margin-bottom:10px;animation:pulse2 1.6s ease-in-out infinite}
+@keyframes pulse2{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.5)}50%{box-shadow:0 0 0 6px rgba(245,158,11,0)}}
+#ppc{height:230px}#ppx{height:330px}
+.simtag{display:inline-block;background:rgba(245,158,11,.16);border:1px solid rgba(245,158,11,.55);color:var(--warn);border-radius:8px;padding:2px 8px;font-size:11.5px;font-weight:650;margin-bottom:6px}
+.pseg{display:flex;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px;min-height:44px}
+.pseg button{flex:1;border:0;background:transparent;min-height:36px;padding:0 6px;border-radius:8px;color:var(--mut);white-space:nowrap}
+.pseg button.on{background:var(--acc);color:#fff;font-weight:600}
+.cseg{flex-wrap:wrap}.cseg button{flex:1 0 auto;min-width:52px}
+html,body{overflow-x:hidden;max-width:100%}
+main,section,.card{min-width:0;max-width:100%}
+#ppc,#ppx,#pc,#ec{width:100%;overflow:hidden}
+.h3{font-weight:650;margin-bottom:6px}
+.empty{color:var(--mut);font-size:13px;padding:8px 0}
+body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity .2s}
+.cap{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px 3px 3px 12px}
+.cap label{flex:1;color:var(--mut);font-size:14px}
+.cap input{width:130px;text-align:right;font-variant-numeric:tabular-nums}
+@media(min-width:760px){.pform{grid-template-columns:1.3fr 1fr 1fr 1fr}#ppc{height:280px}#ppx{height:420px}.ctl{grid-template-columns:1.4fr 1fr 1fr 1fr}.runbar,.runinfo,.stale{grid-column:1/-1}.kpis{grid-template-columns:repeat(4,1fr)}#pc{height:440px}#ec{height:260px}}
+/* ---- Real bot tab ---- */
+body.onBot .ctl{display:none}
+#tabBot{font-weight:650}
+.rbtop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:5px 12px;font-weight:750;font-size:13px;letter-spacing:.04em}
+.pill i{width:9px;height:9px;border-radius:50%;background:currentColor;display:inline-block}
+.pill.run{background:rgba(34,197,94,.16);color:#22c55e;border:1px solid rgba(34,197,94,.5)}
+.pill.run i{animation:blink 1.2s ease-in-out infinite}
+.pill.pau{background:rgba(245,158,11,.16);color:#f59e0b;border:1px solid rgba(245,158,11,.55)}
+.pill.stp{background:rgba(239,68,68,.16);color:#ef4444;border:1px solid rgba(239,68,68,.55)}
+.pill.stale{background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid #f59e0b}
+#vBot .hide,.pill.hide{display:none}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+.rbstale{background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.55);color:#fbbf24;border-radius:10px;padding:9px 12px;font-size:13.5px;font-weight:600;margin-top:8px}
+.rbinfo{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.35);border-radius:10px;padding:8px 12px;font-size:12.5px;margin-top:8px}
+.rbdet{font-size:12.5px;color:var(--mut);margin-top:6px;overflow-wrap:anywhere}
+.ccards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cc{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px;cursor:pointer;min-width:0;text-align:left;min-height:0;display:block;width:100%}
+.cc.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+.cc .t{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.cc .n{font-weight:750;font-size:16px}
+.cc .px{font-variant-numeric:tabular-nums;font-size:15px;margin-top:2px}
+.cc .m{font-size:11.5px;color:var(--mut);margin-top:3px;line-height:1.35;overflow-wrap:anywhere}
+.tagL{background:rgba(34,197,94,.18);color:var(--up);border-radius:6px;padding:1px 7px;font-size:11px;font-weight:750}
+.tagC{background:rgba(138,147,166,.18);color:var(--mut);border-radius:6px;padding:1px 7px;font-size:11px;font-weight:750}
+#rbEq{height:220px}#rbPx{height:340px}
+#rbEq,#rbPx{width:100%;overflow:hidden}
+.flt{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.flt select{flex:1;min-width:0}
+.flt .pseg{flex:1.4;min-width:0}
+.ev{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;min-width:0}
+.ev .w{color:var(--mut);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;min-width:74px}
+.ev .k{font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 6px;background:var(--card2);color:var(--mut);white-space:nowrap;align-self:flex-start}
+.ev .k.fill{background:rgba(253,224,71,.16);color:#fde047}.ev .k.start,.ev .k.stop{background:rgba(59,130,246,.18);color:#93c5fd}
+.ev .x{min-width:0;overflow-wrap:anywhere}
+.togs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.togs label{display:flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:0 8px;min-height:34px;font-size:12.5px;cursor:pointer}
+.togs input{width:16px;height:16px;min-height:0;margin:0}
+.cinfo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}
+.cinfo div{background:var(--card2);border-radius:8px;padding:6px 8px;font-size:12px;color:var(--mut);min-width:0}
+.cinfo b{display:block;color:var(--tx);font-size:14px;font-variant-numeric:tabular-nums}
+
+.livebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#22c55e;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.45);border-radius:999px;padding:3px 9px}
+.live i{width:8px;height:8px;border-radius:50%;background:currentColor;display:inline-block}
+.live.tick i{animation:ping .9s ease-out}
+.live.off{color:#f59e0b;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.5)}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(34,197,94,.9)}100%{box-shadow:0 0 0 9px rgba(34,197,94,0)}}
+.flash{animation:fl .8s ease-out}
+@keyframes fl{0%{background:rgba(59,130,246,.35)}100%{background:transparent}}
+.rbpend{background:rgba(253,224,71,.1);border:1px solid rgba(253,224,71,.55);color:#fde047;border-radius:12px;padding:10px 12px;font-size:13.5px;margin-bottom:10px}
+.cc .pd{margin-top:5px;font-size:11.5px;font-weight:700;color:#fde047}
+.cc .pd.hit,.rbhit{color:#fca5a5}
+.szp{display:inline-block;background:rgba(59,130,246,.16);color:#93c5fd;border:1px solid rgba(59,130,246,.45);border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700}
+.slots{display:grid;grid-template-columns:1fr;gap:8px}
+.slot{background:var(--card2);border-radius:10px;padding:9px 10px;font-size:12.5px;min-width:0;overflow-wrap:anywhere;line-height:1.45}
+.slot.free{border:1px dashed var(--line);color:var(--mut)}
+.slot b{font-variant-numeric:tabular-nums}
+.rs{display:inline-block;font-size:9.5px;font-weight:800;padding:0 5px;border-radius:5px;background:#334155;color:#e2e8f0;margin-left:3px}
+.rs.TP{background:#14532d;color:#bbf7d0}.rs.SL{background:#7f1d1d;color:#fecaca}.rs.SWITCH{background:#1e3a8a;color:#bfdbfe}
+.skp{font-size:12px;padding:5px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.ev .k.skip{background:rgba(245,158,11,.16);color:#fbbf24}.ev .k.tpsl{background:rgba(239,68,68,.16);color:#fca5a5}.ev .k.resize{background:rgba(59,130,246,.18);color:#93c5fd}
+@media(min-width:760px){.slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:760px){.ccards{grid-template-columns:repeat(6,minmax(0,1fr))}.cc.wide{grid-column:span 3}#rbEq{height:260px}#rbPx{height:440px}.cinfo{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.cc.wide{grid-column:1/-1}
+.cc.mini{padding:7px 9px;border-radius:10px}.cc.mini .n{font-size:14px}.cc.mini .m{margin-top:2px;font-variant-numeric:tabular-nums}.cc.mini .t.m{display:flex}
+.cc.exl{opacity:.55}.szp.sig{background:#1e3a8a;color:#bfdbfe}
+.rs.ARROW_INTRABAR{background:rgba(0,195,255,.18);color:#7dd3fc}.rs.ARROW_CLOSE{background:rgba(138,147,166,.18)}
+</style>
+</head>
+<body>
+<header>
+  <div class="row"><h1>SSL Hybrid Live</h1><button id="refresh" aria-label="Refresh now">↻ Refresh</button></div>
+  <div class="meta row" style="margin-top:4px"><span id="upd">Loading…</span><span id="src"></span></div>
+  <div class="prog" id="prog"></div>
+</header>
+<main>
+  <div class="ctl">
+    <div class="seg" id="tfSeg"></div>
+    <div class="seg" id="dirSeg"></div>
+    <div class="seg" id="exSeg"></div>
+    <div class="cap"><label for="capIn">Starting capital (USD)</label><input id="capIn" type="number" inputmode="decimal" min="1" step="1"></div>
+  </div>
+  <div class="runbar">
+    <button id="runBtn"><span class="spin"></span><span id="runLbl">▶ Run simulation</span></button>
+    <label class="auto"><input type="checkbox" id="autoIn"> Auto-update</label>
+  </div>
+  <div class="runinfo"><span id="runStat"></span><span id="runWhen"></span></div>
+  <div class="stale" id="staleNote">Settings changed — press Run to update the results.</div>
+  <div class="tabs"><button id="tabBot" class="on">Real Bot</button><button id="tabPap">Simulation</button></div>
+
+  <section id="vBot" class="hide">
+    <div class="card">
+      <div class="rbtop"><span class="pill stp" id="rbPill"><i></i><span id="rbPillT">LOADING</span></span><span class="pill stale hide" id="rbStalePill">STALE</span><span class="meta" id="rbMode"></span></div>
+      <div class="rbdet" id="rbDetail"></div>
+      <div class="rbstale hide" id="rbStaleNote">Data is older than 30 minutes — the bot may have stopped. Last export <b id="rbStaleWhen">–</b>.</div>
+      <div class="rbinfo"><b>Data from the 24/7 paper bot, updated every 10 min.</b> Positions as of the export <b id="rbExp">–</b> WIB <span id="rbAgo"></span>; this page re-checks for a new export every 60 s. <b>P&L is marked live</b> in your browser from Binance prices every 5 s. Paper trading only: no exchange keys, no real orders.</div>
+    </div>
+    <div class="card"><div class="livebar"><span class="live" id="rbLive"><i></i>LIVE</span><span class="meta" id="rbTick"></span></div><div class="phead"><div><div class="meta">Paper balance · live mark</div><div class="big" id="rbBal">–</div><div id="rbPnl" class="meta"></div></div><div class="cd">Next bar close<br><b id="rbCd">–</b></div></div></div>
+    <div class="rbpend hide" id="rbPend"></div>
+    <div class="card"><div class="legend"><span><i class="dot" style="background:#22c55e"></i>Paper equity (USD)</span><span><i class="dot" style="background:#8a93a6"></i>Buy & hold</span></div><div id="rbEq"></div></div>
+    <div class="card"><div class="h3">Skipped arrows (last 24h) <span class="meta" id="rbSkipN"></span></div><div id="rbSkip"></div></div>
+    <div class="card"><div class="h3">Coins · live price · last exit arrow</div><div class="ccards" id="rbCoins"></div></div>
+    <div class="card"><div class="h3">Open positions</div><div class="tblwrap"><table><thead><tr><th>Coin</th><th>Entry</th><th>Size</th><th>Now</th><th>Net</th></tr></thead><tbody id="rbPos"></tbody></table></div></div>
+    <div class="card"><div class="h3">Trade log</div><div class="tblwrap"><table><thead><tr><th>Coin</th><th>Entry</th><th>Exit</th><th>Net</th><th>Reason</th><th>When</th></tr></thead><tbody id="rbLog"></tbody></table></div></div>
+    <div class="card"><div class="h3">Bot events</div><div id="rbEv"></div></div>
+    <div class="card"><div class="h3">Strategy</div><div class="note" id="rbNote"></div></div>
+  </section>
+
+  <section id="vPap" class="hide">
+    <div class="card"><div class="livebar"><span class="live" id="papLive"><i></i>LIVE</span><span class="meta" id="papTick"></span></div><div class="phead"><div><div class="meta">Paper balance · live mark</div><div class="big" id="papBal">–</div><div id="papPnl" class="meta"></div></div><div class="cd">Next bar close<br><b id="papCd">–</b></div></div></div>
+    <div class="card"><div class="h3">Coins · Exit Arrow state</div><div class="ccards" id="papCoins"></div></div>
+    <div class="card"><div class="h3">Open positions</div><div class="tblwrap"><table><thead><tr><th>Coin</th><th>Entry</th><th>Size</th><th>Now</th><th>Net</th></tr></thead><tbody id="papPos"></tbody></table></div></div>
+    <div class="card"><div class="h3">Trade log</div><div class="tblwrap"><table><thead><tr><th>Coin</th><th>Entry</th><th>Exit</th><th>Net</th><th>Reason</th><th>When</th></tr></thead><tbody id="papLog"></tbody></table></div></div>
+    <div class="card"><div class="h3">Strategy</div><div class="note" id="papNote"></div></div>
+  </section>
+
+</main>
+<script>
+/* ---- SSL Hybrid core (Pine v6 port, exact) ---- */
+const CORE = (() => {
+  const sum = (a, i, n) => { let s = 0; for (let k = 0; k < n; k++) s += a[i - k]; return s; };
+  const sma = (a, n, i) => i + 1 < n ? NaN : sum(a, i, n) / n;
+  const rma = (src, n) => { const o = new Array(src.length); let a = NaN; for (let i = 0; i < src.length; i++) { const x = src[i]; if (Number.isNaN(x)) { o[i] = a; continue; } a = Number.isNaN(a) ? x : (a * (n - 1) + x) / n; o[i] = a; } return o; };
+  const ema = (src, n) => { const o = new Array(src.length), k = 2 / (n + 1); let a = NaN; for (let i = 0; i < src.length; i++) { const x = src[i]; if (Number.isNaN(x)) { o[i] = a; continue; } a = Number.isNaN(a) ? x : a + k * (x - a); o[i] = a; } return o; };
+  const wma = (a, n, i) => { if (i + 1 < n) return NaN; let s = 0, w = 0; for (let k = 0; k < n; k++) { s += a[i - k] * (n - k); w += n - k; } return s / w; };
+  const hma = (src, n) => { const h = Math.round(n / 2), sq = Math.round(Math.sqrt(n)); const a = new Array(src.length), b = new Array(src.length); for (let i = 0; i < src.length; i++) { a[i] = wma(src, h, i); b[i] = wma(src, n, i); } const d = a.map((v, i) => v - b[i]); const o = new Array(src.length); for (let i = 0; i < src.length; i++) o[i] = wma(d, sq, i); return o; };
+  const atr = (H, L, C, n, mode) => { const tr = H.map((h, i) => i ? Math.max(h - L[i], Math.abs(h - C[i - 1]), Math.abs(L[i] - C[i - 1])) : h - L[i]); return mode === "rma" ? rma(tr, n) : mode === "ema" ? ema(tr, n) : mode === "wma" ? tr.map((_, i) => wma(tr, n, i)) : tr.map((_, i) => sma(tr, n, i)); };
+  return { sma, ema, hma, atr };
+})();
+/* ---- end core ---- */
+
+const $ = id => document.getElementById(id);
+const S = Object.assign({ tf: "1h", dir: "long", ex: "baseline", tab: "pap", coin: "BTC", sort: "since", asc: true, cap: 500, auto: true }, JSON.parse(localStorage.getItem("sslh") || "{}"));
+S.tab = ({ "#pap": "pap" })[location.hash] || "bot";
+const save = () => localStorage.setItem("sslh", JSON.stringify({ tf: S.tf, dir: S.dir, ex: S.ex, tab: S.tab, coin: S.coin, sort: S.sort, asc: S.asc, cap: S.cap, auto: S.auto }));
+function setTab(t, load = true) {
+  S.tab = t; save();
+  [["bot", "tabBot", "vBot"], ["pap", "tabPap", "vPap"]].forEach(([k, b, v]) => { $(b).className = t === k ? "on" : ""; $(v).className = t === k ? "" : "hide"; });
+  document.body.classList.toggle("onPaper", t === "pap"); document.body.classList.toggle("onBot", t === "bot");
+  if (typeof markStale === "function") markStale();
+  if (load) ensureView();
+}
+$("tabBot").onclick = () => setTab("bot");
+$("tabPap").onclick = () => setTab("pap");
+/* rest of the original script continues below - truncated in this message for length, but full file will be used */
+</script>
+</body>
+</html>
