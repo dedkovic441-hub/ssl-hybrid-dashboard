@@ -1223,18 +1223,19 @@ $("autoIn").onchange = () => { S.auto = $("autoIn").checked; save(); };
 S.auto = true; save();   // auto-refresh is always on at page load
 
 // Real Bot TF selector
+// GitHub Pages is a static site and cannot send authenticated commands to the remote bot.
+// Until a secure remote control API is configured, don't pretend a timeframe change succeeded.
 document.querySelectorAll("#rbTfSeg button").forEach(btn => {
   btn.onclick = () => {
     const tf = btn.dataset.tf;
     if (!["15m", "1h", "4h"].includes(tf)) return;
-    document.querySelectorAll("#rbTfSeg button").forEach(b => b.classList.toggle("on", b === btn));
-    const el = document.getElementById("rbTf");
-    if (el) el.textContent = tf;
     const note = document.getElementById("rbErr");
-    if (note) note.textContent = "Opening the local bot controller to request " + tf + "…";
-    // GitHub Pages cannot securely control the bot directly. Open the existing local API-backed dashboard.
-    // This works only on the same computer where the bot's local server is running.
-    window.open("http://127.0.0.1:8811/?tf=" + encodeURIComponent(tf), "_blank", "noopener");
+    if (note) {
+      note.textContent = "Remote control is not connected. No command was sent; the paper bot remains on its current timeframe. Requested: " + tf + ".";
+      note.classList.remove("hide");
+      note.setAttribute("role", "status");
+      note.setAttribute("aria-live", "polite");
+    }
   };
 });
 
