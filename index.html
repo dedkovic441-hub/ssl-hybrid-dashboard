@@ -51,15 +51,15 @@ tr.fresh{background:rgba(245,158,11,.12)}
 .note{font-size:12px;color:var(--mut);margin-top:14px}
 .err{color:var(--dn);font-size:13px}
 .hide{display:none}
-.runbar{display:flex;gap:8px;align-items:stretch}
-#runBtn{flex:1;min-height:54px;font-size:19px;font-weight:700;background:#16a34a;border-color:#16a34a;color:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 14px rgba(22,163,74,.35)}
+.runbar{display:flex;gap:8px;align-items:center;margin:6px 0 10px;justify-content:flex-start}
+#runBtn{min-height:36px;font-size:13px;font-weight:600;background:#16a34a;border-color:#16a34a;color:#fff;border-radius:8px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-shadow:none}
 #runBtn:disabled{background:#14532d;border-color:#14532d;color:#bbf7d0;cursor:wait;box-shadow:none}
 #runBtn.attn{animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}50%{box-shadow:0 0 0 8px rgba(34,197,94,0)}}
 .spin{width:18px;height:18px;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:rot .8s linear infinite;display:none}
 #runBtn:disabled .spin{display:inline-block}
 @keyframes rot{to{transform:rotate(360deg)}}
-.auto{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:0 12px;font-size:13px;color:var(--mut);white-space:nowrap;cursor:pointer;min-height:54px}
+.auto{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:0 10px;font-size:12px;color:var(--mut);white-space:nowrap;cursor:pointer;min-height:36px}
 .auto input{width:22px;height:22px;min-height:0;accent-color:#16a34a;margin:0}
 .runinfo{font-size:12px;color:var(--mut);margin-top:-2px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .stale{display:none;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.5);color:var(--warn);border-radius:10px;padding:9px 12px;font-size:14px;font-weight:600}
@@ -238,7 +238,7 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
   </section>
 
   <section id="vPap" class="hide">
-    <div class="runbar" style="margin-bottom:10px"><button id="runBtn" aria-label="Re-run now"><span class="spin"></span><span id="runLab">↻ Re-run simulation</span></button><label class="auto"><input type="checkbox" id="autoIn" checked>Auto-refresh 60s</label></div>
+    <div class="runbar"><button id="runBtn" aria-label="Re-run now"><span class="spin"></span><span id="runLab">↻ Re-run</span></button><label class="auto"><input type="checkbox" id="autoIn" checked>Auto 60s</label></div>
     <div class="runinfo" style="margin-bottom:8px"><span id="runInfo">Last run: –</span><span id="runSetup"></span></div>
     <div class="stale" id="staleMsg">Settings changed, updating automatically…</div>
     <div class="sim"><b>BROWSER SIMULATION: this is NOT the 24/7 paper bot's actual trades or balance.</b> This page runs its own paper simulation in your browser, recomputed on every page load from the start time below using Binance public price history, so its numbers can differ from the bot's (the bot switched rules and timeframes during its run; this page applies one rule from the start). No exchange keys are used and no orders are placed anywhere. Default: <b>Exit Arrows, long-only</b>, $500 split across ZEC, NEAR, PEPE, SOL, XRP; BUY at the next bar open after a ▲ up arrow (close crosses above the Exit SSL HMA15), sell to cash after a ▼ down arrow. Indicator = Mihkel00 SSL Hybrid, TradingView Pine v6 (WMA ATR smoothing), identical to the bot's ssl_core.py. Fees 0.1% per side.</div>
