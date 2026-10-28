@@ -100,7 +100,7 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
 .cap input{width:130px;text-align:right;font-variant-numeric:tabular-nums}
 @media(min-width:760px){.pform{grid-template-columns:1.3fr 1fr 1fr 1fr}#ppc{height:280px}#ppx{height:420px}.ctl{grid-template-columns:1.4fr 1fr 1fr 1fr}.runbar,.runinfo,.stale{grid-column:1/-1}.kpis{grid-template-columns:repeat(4,1fr)}#pc{height:440px}#ec{height:260px}}
 /* ---- Real bot tab ---- */
-body.onBot .ctl{display:none}
+/* controls moved inside Simulation tab */
 #tabBot{font-weight:650}
 .rbtop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .pill{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:5px 12px;font-weight:750;font-size:13px;letter-spacing:.04em}
@@ -176,15 +176,7 @@ body.onBot .ctl{display:none}
   <div class="prog" id="prog"></div>
 </header>
 <main>
-  <div class="ctl">
-    <div class="seg" id="tfSeg"></div>
-    <div class="seg" id="dirSeg"></div>
-    <div class="seg" id="exSeg"></div>
-    <div class="cap"><label for="capIn">Starting capital (USD)</label><input id="capIn" type="number" inputmode="decimal" min="1" step="50" value="500"></div>
-    <div class="runbar"><button id="runBtn" aria-label="Re-run now (optional, it runs automatically)"><span class="spin"></span><span id="runLab">↻ Re-run</span></button><label class="auto"><input type="checkbox" id="autoIn" checked>Auto-refresh 60s</label></div>
-    <div class="runinfo"><span id="runInfo">Last run: –</span><span id="runSetup"></span></div>
-    <div class="stale" id="staleMsg">Settings changed, updating automatically…</div>
-  </div>
+
   <div class="tabs"><button id="tabBot" class="on">Real Bot</button><button id="tabPap">Simulation</button></div>
 
   <section id="vBot" class="hide">
@@ -246,6 +238,9 @@ body.onBot .ctl{display:none}
   </section>
 
   <section id="vPap" class="hide">
+    <div class="runbar" style="margin-bottom:10px"><button id="runBtn" aria-label="Re-run now"><span class="spin"></span><span id="runLab">↻ Re-run simulation</span></button><label class="auto"><input type="checkbox" id="autoIn" checked>Auto-refresh 60s</label></div>
+    <div class="runinfo" style="margin-bottom:8px"><span id="runInfo">Last run: –</span><span id="runSetup"></span></div>
+    <div class="stale" id="staleMsg">Settings changed, updating automatically…</div>
     <div class="sim"><b>BROWSER SIMULATION: this is NOT the 24/7 paper bot's actual trades or balance.</b> This page runs its own paper simulation in your browser, recomputed on every page load from the start time below using Binance public price history, so its numbers can differ from the bot's (the bot switched rules and timeframes during its run; this page applies one rule from the start). No exchange keys are used and no orders are placed anywhere. Default: <b>Exit Arrows, long-only</b>, $500 split across ZEC, NEAR, PEPE, SOL, XRP; BUY at the next bar open after a ▲ up arrow (close crosses above the Exit SSL HMA15), sell to cash after a ▼ down arrow. Indicator = Mihkel00 SSL Hybrid, TradingView Pine v6 (WMA ATR smoothing), identical to the bot's ssl_core.py. Fees 0.1% per side.</div>
     <div class="card">
       <div class="pform">
