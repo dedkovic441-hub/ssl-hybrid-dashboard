@@ -100,6 +100,10 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
 .cap input{width:130px;text-align:right;font-variant-numeric:tabular-nums}
 @media(min-width:760px){.pform{grid-template-columns:1.3fr 1fr 1fr 1fr}#ppc{height:280px}#ppx{height:420px}.ctl{grid-template-columns:1.4fr 1fr 1fr 1fr}.runbar,.runinfo,.stale{grid-column:1/-1}.kpis{grid-template-columns:repeat(4,1fr)}#pc{height:440px}#ec{height:260px}}
 /* ---- Real bot tab ---- */
+.rb-tf{display:flex;gap:6px;margin:8px 0}
+.rb-tf button{flex:1;min-height:40px;font-size:14px;font-weight:600}
+.rb-tf button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+
 /* controls moved inside Simulation tab */
 #tabBot{font-weight:650}
 .rbtop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -124,7 +128,7 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
 .cc .m{font-size:11.5px;color:var(--mut);margin-top:3px;line-height:1.35;overflow-wrap:anywhere}
 .tagL{background:rgba(34,197,94,.18);color:var(--up);border-radius:6px;padding:1px 7px;font-size:11px;font-weight:750}
 .tagC{background:rgba(138,147,166,.18);color:var(--mut);border-radius:6px;padding:1px 7px;font-size:11px;font-weight:750}
-#rbEq{height:220px}#rbPx{height:340px}
+#rbEq{height:180px;max-width:180px;aspect-ratio:1;margin:0 auto}#rbPx{height:340px}
 #rbEq,#rbPx{width:100%;overflow:hidden}
 .flt{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .flt select{flex:1;min-width:0}
@@ -162,7 +166,7 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
 .skp{font-size:12px;padding:5px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
 .ev .k.skip{background:rgba(245,158,11,.16);color:#fbbf24}.ev .k.tpsl{background:rgba(239,68,68,.16);color:#fca5a5}.ev .k.resize{background:rgba(59,130,246,.18);color:#93c5fd}
 @media(min-width:760px){.slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(min-width:760px){.ccards{grid-template-columns:repeat(6,minmax(0,1fr))}.cc.wide{grid-column:span 3}#rbEq{height:260px}#rbPx{height:440px}.cinfo{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(min-width:760px){.ccards{grid-template-columns:repeat(6,minmax(0,1fr))}.cc.wide{grid-column:span 3}#rbEq{height:200px;max-width:200px}#rbPx{height:440px}.cinfo{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .cc.wide{grid-column:1/-1}
 .cc.mini{padding:7px 9px;border-radius:10px}.cc.mini .n{font-size:14px}.cc.mini .m{margin-top:2px;font-variant-numeric:tabular-nums}.cc.mini .t.m{display:flex}
 .cc.exl{opacity:.55}.szp.sig{background:#1e3a8a;color:#bfdbfe}
@@ -195,16 +199,20 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
       <div class="rbdet" id="rbDetail"></div>
       <div class="rbstale hide" id="rbStale"></div>
       <div class="rbinfo"><b>Data from the 24/7 paper bot, updated every 10 min.</b> Positions as of the export <b id="rbExp">–</b> WIB <span id="rbAgo"></span>; this page re-checks for a new export every 60 s. <b>P&amp;L is marked live</b> in your browser from Binance prices every 5 s. Paper trading only: no exchange keys, no real orders.</div>
-      <div class="meta" style="margin-top:6px">The timeframe and pause/resume are changed by messaging the bot in chat (this public page is read-only).</div>
+      <div class="rb-tf" id="rbTfSeg">
+        <button data-tf="15m" class="on">15m</button>
+        <button data-tf="1h">1h</button>
+        <button data-tf="4h">4h</button>
+      </div>
       <div id="rbErr" class="err"></div>
     </div>
+    <div class="card" style="text-align:center"><div class="h3">Equity vs buy & hold</div><div class="legend" style="justify-content:center"><span><i class="dot" style="background:#22c55e"></i>Bot</span><span><i class="dot" style="background:#8a93a6"></i>Buy & hold</span></div><div id="rbEq"></div></div>
     <div class="card">
       <div class="livebar"><span class="live" id="rbLive"><i></i><span id="rbLiveT">CONNECTING</span></span><span class="meta" id="rbLiveAt">connecting to Binance…</span></div>
       <div class="phead"><div><div class="meta">Paper balance · live mark</div><div class="big" id="rbBal">–</div><div id="rbPnl" class="meta"></div></div>
       <div class="cd">Next <span id="rbTf">–</span> bar close<br><b id="rbCd">–</b><div id="rbCdAt"></div></div></div>
       <div class="kpis" id="rbKpis" style="margin-top:10px"></div><div class="meta" id="rbAsOf" style="margin-top:8px"></div>
     </div>
-    <div class="card"><div class="h3">Equity vs buy &amp; hold</div><div class="legend"><span><i class="dot" style="background:#22c55e"></i>Bot equity (USD)</span><span><i class="dot" style="background:#8a93a6"></i>Buy &amp; hold same coins</span></div><div id="rbEq"></div></div>
     <div class="rbpend hide" id="rbPend"></div>
     <div class="card hide" id="rbPoolC"><div class="h3">Pool <span class="meta" id="rbPoolH"></span></div><div class="slots" id="rbSlots"></div><div class="meta" id="rbPoolN" style="margin-top:6px"></div><div class="h3" style="margin-top:10px;font-size:14px">Skipped arrows <span class="meta">· slots full, not queued</span></div><div id="rbSkip"></div></div>
     <div class="card"><div class="h3">Coins <span class="meta">· live prices · positions as of <span class="asof">–</span> · tap a coin for its chart</span></div><div class="ccards" id="rbCards"></div></div>
@@ -520,7 +528,10 @@ window.RB = (function () {
     let det = st === "RUNNING" ? "Bot alive" + (num(D.hb_age_s) ? `, heartbeat ${Math.round(D.hb_age_s)} s before the export` : "") : (D.status_detail || "");
     if (D.paused) det = `Paused since ${D.paused.since_wib} WIB: ${D.paused.reason}. No new entries; exits still follow the rules.`;
     $("rbDetail").textContent = det + (D.heartbeat_wib ? ` (last heartbeat ${D.heartbeat_wib.slice(11, 19)} WIB)` : "");
-    $("rbExp").textContent = wib(D.exported_ms); $("rbAgo").textContent = `(${ageMin < 1 ? "<1" : Math.round(ageMin)} min ago)`;
+    $("rbExp").textContent = wib(D.exported_ms);
+
+    document.querySelectorAll("#rbTfSeg button").forEach(b => b.classList.toggle("on", b.dataset.tf === D.tf));
+ $("rbAgo").textContent = `(${ageMin < 1 ? "<1" : Math.round(ageMin)} min ago)`;
     document.querySelectorAll("#vBot .asof").forEach(e => e.textContent = WIBH.format(new Date(D.positions_as_of_ms || D.exported_ms)));
     const tb = TFMS[D.tf] || 9e5, now = Date.now(), nx = Math.ceil((now + 1) / tb) * tb, s = Math.round((nx - now) / 1000);
     $("rbTf").textContent = D.tf; $("rbCd").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; $("rbCdAt").textContent = "at " + WIBH.format(new Date(nx)) + " WIB";
@@ -1210,6 +1221,19 @@ function ensureView() {   // a tab switch shows the last run; it only fetches if
 $("autoIn").checked = !!S.auto;
 $("autoIn").onchange = () => { S.auto = $("autoIn").checked; save(); };
 S.auto = true; save();   // auto-refresh is always on at page load
+
+// Real Bot TF selector
+document.querySelectorAll("#rbTfSeg button").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll("#rbTfSeg button").forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+    const tf = btn.dataset.tf;
+    if (typeof D !== "undefined" && D) D.tf = tf;
+    const el = document.getElementById("rbTf");
+    if (el) el.textContent = tf;
+  };
+});
+
 selectCoin(S.coin); setTab(S.tab, false); markStale();
 if (S.tab === "bot") RB.show(); else runNow();   // first load: run with the saved (or default) settings so the page is never empty
 setInterval(() => { if (S.auto && !document.hidden) refreshAll(); }, 60000);
