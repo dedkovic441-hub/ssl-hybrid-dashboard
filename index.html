@@ -1224,13 +1224,17 @@ S.auto = true; save();   // auto-refresh is always on at page load
 
 // Real Bot TF selector
 document.querySelectorAll("#rbTfSeg button").forEach(btn => {
-  btn.onclick = () => {
+  btn.onclick = async () => {
     document.querySelectorAll("#rbTfSeg button").forEach(b => b.classList.remove("on"));
     btn.classList.add("on");
     const tf = btn.dataset.tf;
     if (typeof D !== "undefined" && D) D.tf = tf;
     const el = document.getElementById("rbTf");
     if (el) el.textContent = tf;
+    const note = document.getElementById("rbErr");
+    if (note) note.textContent = "Requested " + tf + " — bot will switch within ~1 min";
+    // Open the control file so the user (or the bot poll) can confirm
+    window.open("https://github.com/dedkovic441-hub/ssl-hybrid-dashboard/edit/main/control/tf.json", "_blank");
   };
 });
 
