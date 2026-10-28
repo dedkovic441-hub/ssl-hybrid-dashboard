@@ -1224,17 +1224,17 @@ S.auto = true; save();   // auto-refresh is always on at page load
 
 // Real Bot TF selector
 document.querySelectorAll("#rbTfSeg button").forEach(btn => {
-  btn.onclick = async () => {
-    document.querySelectorAll("#rbTfSeg button").forEach(b => b.classList.remove("on"));
-    btn.classList.add("on");
+  btn.onclick = () => {
     const tf = btn.dataset.tf;
-    if (typeof D !== "undefined" && D) D.tf = tf;
+    if (!["15m", "1h", "4h"].includes(tf)) return;
+    document.querySelectorAll("#rbTfSeg button").forEach(b => b.classList.toggle("on", b === btn));
     const el = document.getElementById("rbTf");
     if (el) el.textContent = tf;
     const note = document.getElementById("rbErr");
-    if (note) note.textContent = "Requested " + tf + " — bot will switch within ~1 min";
-    // Open the control file so the user (or the bot poll) can confirm
-    window.open("https://github.com/dedkovic441-hub/ssl-hybrid-dashboard/edit/main/control/tf.json", "_blank");
+    if (note) note.textContent = "Opening the local bot controller to request " + tf + "…";
+    // GitHub Pages cannot securely control the bot directly. Open the existing local API-backed dashboard.
+    // This works only on the same computer where the bot's local server is running.
+    window.open("http://127.0.0.1:8811/?tf=" + encodeURIComponent(tf), "_blank", "noopener");
   };
 });
 
