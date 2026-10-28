@@ -51,15 +51,16 @@ tr.fresh{background:rgba(245,158,11,.12)}
 .note{font-size:12px;color:var(--mut);margin-top:14px}
 .err{color:var(--dn);font-size:13px}
 .hide{display:none}
-.runbar{display:flex;gap:8px;align-items:center;margin:6px 0 10px;justify-content:flex-start}
-#runBtn{min-height:36px;font-size:13px;font-weight:600;background:#16a34a;border-color:#16a34a;color:#fff;border-radius:8px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-shadow:none}
+.tabwrap{display:flex;flex-direction:column;flex:1;gap:4px;align-items:stretch}
+#runBtn{width:44px;height:44px;min-height:44px;font-size:18px;font-weight:700;background:#16a34a;border-color:#16a34a;color:#fff;border-radius:8px;padding:0;display:flex;align-items:center;justify-content:center;align-self:center;margin-top:2px;box-shadow:none}
+#runBtn:disabled{background:#14532d;border-color:#14532d;color:#bbf7d0}
 #runBtn:disabled{background:#14532d;border-color:#14532d;color:#bbf7d0;cursor:wait;box-shadow:none}
 #runBtn.attn{animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}50%{box-shadow:0 0 0 8px rgba(34,197,94,0)}}
 .spin{width:18px;height:18px;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:rot .8s linear infinite;display:none}
 #runBtn:disabled .spin{display:inline-block}
 @keyframes rot{to{transform:rotate(360deg)}}
-.auto{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:0 10px;font-size:12px;color:var(--mut);white-space:nowrap;cursor:pointer;min-height:36px}
+.auto{display:none}
 .auto input{width:22px;height:22px;min-height:0;accent-color:#16a34a;margin:0}
 .runinfo{font-size:12px;color:var(--mut);margin-top:-2px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .stale{display:none;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.5);color:var(--warn);border-radius:10px;padding:9px 12px;font-size:14px;font-weight:600}
@@ -176,8 +177,15 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
   <div class="prog" id="prog"></div>
 </header>
 <main>
+  <div id="runInfo" style="display:none"></div><div id="runSetup" style="display:none"></div><div id="staleMsg" class="stale" style="display:none"></div><input type="checkbox" id="autoIn" checked style="display:none">
 
-  <div class="tabs"><button id="tabBot" class="on">Real Bot</button><button id="tabPap">Simulation</button></div>
+  <div class="tabs">
+    <button id="tabBot" class="on">Real Bot</button>
+    <div class="tabwrap">
+      <button id="tabPap">Simulation</button>
+      <button id="runBtn" aria-label="Re-run simulation" title="Re-run">↻</button>
+    </div>
+  </div>
 
   <section id="vBot" class="hide">
     <div class="card">
@@ -238,9 +246,7 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
   </section>
 
   <section id="vPap" class="hide">
-    <div class="runbar"><button id="runBtn" aria-label="Re-run now"><span class="spin"></span><span id="runLab">↻ Re-run</span></button><label class="auto"><input type="checkbox" id="autoIn" checked>Auto 60s</label></div>
-    <div class="runinfo" style="margin-bottom:8px"><span id="runInfo">Last run: –</span><span id="runSetup"></span></div>
-    <div class="stale" id="staleMsg">Settings changed, updating automatically…</div>
+
     <div class="sim"><b>BROWSER SIMULATION: this is NOT the 24/7 paper bot's actual trades or balance.</b> This page runs its own paper simulation in your browser, recomputed on every page load from the start time below using Binance public price history, so its numbers can differ from the bot's (the bot switched rules and timeframes during its run; this page applies one rule from the start). No exchange keys are used and no orders are placed anywhere. Default: <b>Exit Arrows, long-only</b>, $500 split across ZEC, NEAR, PEPE, SOL, XRP; BUY at the next bar open after a ▲ up arrow (close crosses above the Exit SSL HMA15), sell to cash after a ▼ down arrow. Indicator = Mihkel00 SSL Hybrid, TradingView Pine v6 (WMA ATR smoothing), identical to the bot's ssl_core.py. Fees 0.1% per side.</div>
     <div class="card">
       <div class="pform">
@@ -1164,9 +1170,9 @@ function autoRun(ms) { clearTimeout(autoT); autoT = setTimeout(() => { if (S.tab
 function markStale() { if (S.tab !== "bot" && isStale()) autoRun(); document.body.classList.toggle("isStale", isStale()); $("runBtn").classList.toggle("attn", isStale()); $("runSetup").textContent = "Showing: " + (S.tab === "pap" ? papText(PR) : setupText(R)); }
 function runProgress() {
   if (!running) return;
-  if (runTab === "pap") { $("runLab").textContent = papRun.total ? `Running… ${papRun.n}/${papRun.total} coins` : "Running…"; return; }
+  if (runTab === "pap") { $("runBtn").textContent = papRun.total ? `${papRun.n}/${papRun.total}` : "…"; return; }
   const det = runTab === "det";
-  $("runLab").textContent = det ? (detRun.total ? `Running… ${detRun.n}/${detRun.total} batches` : "Running…") : `Running… ${sigRun.n}/${sigRun.total} coins`;
+  $("runBtn").textContent = "…";
 }
 function work(mode) {   // mode: "run" (button / first load) or "auto" (60 s refresh)
   const p = (async () => {
@@ -1176,7 +1182,7 @@ function work(mode) {   // mode: "run" (button / first load) or "auto" (60 s ref
       else if (runTab === "det") await loadDetail(mode === "run" ? true : !pChart);
       else await loadSignals();
       if (mode === "run") $("runInfo").textContent = "Last run: " + WIB.format(new Date()) + " WIB";
-    } finally { running = null; $("runBtn").disabled = false; $("refresh").disabled = false; $("runLab").textContent = "↻ Re-run"; markStale(); }
+    } finally { running = null; $("runBtn").disabled = false; $("refresh").disabled = false; $("runBtn").textContent = "↻"; markStale(); }
   })();
   running = p; return p;
 }
