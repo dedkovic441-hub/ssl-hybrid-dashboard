@@ -84,6 +84,10 @@ body.onPaper #tfSeg,body.onPaper #dirSeg,body.onPaper #exSeg,body.onPaper .ctl>.
 .newsig{display:none;background:rgba(245,158,11,.16);border:1px solid var(--warn);color:var(--warn);border-radius:10px;padding:9px 12px;font-weight:650;font-size:14px;margin-bottom:10px;animation:pulse2 1.6s ease-in-out infinite}
 @keyframes pulse2{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.5)}50%{box-shadow:0 0 0 6px rgba(245,158,11,0)}}
 #ppc{height:230px}#ppx{height:330px}
+.pload{display:none;align-items:center;gap:10px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.45);border-radius:10px;padding:10px 12px;font-size:14px;font-weight:600;margin-bottom:10px}
+.pload.on{display:flex}.pload .spin{display:inline-block;flex:none;border-color:rgba(147,197,253,.35);border-top-color:#93c5fd}
+.pload .bar{height:4px;background:rgba(255,255,255,.12);border-radius:3px;margin-top:6px;overflow:hidden}.pload .bar i{display:block;height:100%;width:0;background:var(--acc);transition:width .25s}
+.chips label.botc{border-color:var(--acc)}
 .simtag{display:inline-block;background:rgba(245,158,11,.16);border:1px solid rgba(245,158,11,.55);color:var(--warn);border-radius:8px;padding:2px 8px;font-size:11.5px;font-weight:650;margin-bottom:6px}
 .pseg{display:flex;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px;min-height:44px}
 .pseg button{flex:1;border:0;background:transparent;min-height:36px;padding:0 6px;border-radius:8px;color:var(--mut);white-space:nowrap}
@@ -258,7 +262,16 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
 
   <section id="vPap" class="hide">
 
-    <div class="sim"><b>BROWSER SIMULATION: this is NOT the 24/7 paper bot's actual trades or balance.</b> This page runs its own paper simulation in your browser, recomputed on every page load from the start time below using Binance public price history, so its numbers can differ from the bot's (the bot switched rules and timeframes during its run; this page applies one rule from the start). No exchange keys are used and no orders are placed anywhere. Default: <b>Exit Arrows, long-only</b>, $500 split across ZEC, NEAR, PEPE, SOL, XRP; BUY at the next bar open after a ▲ up arrow (close crosses above the Exit SSL HMA15), sell to cash after a ▼ down arrow. Indicator = Mihkel00 SSL Hybrid, TradingView Pine v6 (WMA ATR smoothing), identical to the bot's ssl_core.py. Fees 0.1% per side.</div>
+    <div class="sim"><b>BROWSER SIMULATION: this is NOT the 24/7 paper bot's actual trades or balance.</b> This page runs its own paper simulation in your browser, recomputed on every page load from the start time below using Binance public price history, so its numbers can differ from the bot's (the bot switched rules and timeframes during its run; this page applies one rule from the start). No exchange keys are used and no orders are placed anywhere. Default: <b>Exit Arrows, long-only</b>, $500 split equally across <b>the live bot's current coins</b> (its universe in bot.json, start time = the bot's start); BUY at the next bar open after a ▲ up arrow (close crosses above the Exit SSL HMA15), sell to cash after a ▼ down arrow. Indicator = Mihkel00 SSL Hybrid, TradingView Pine v6 (WMA ATR smoothing), identical to the bot's ssl_core.py. Fees 0.1% per side.</div>
+    <div class="pload" id="pLoad" role="status" aria-live="polite"><span class="spin"></span><div style="flex:1;min-width:0"><div id="pLoadT">Loading price history…</div><div class="bar"><i id="pLoadB"></i></div></div></div>
+    <div class="card">
+      <div class="simtag">Browser simulation · not the bot's actual trades</div>
+      <div class="phead"><div><div class="meta">Simulated paper balance (marked to the live price)</div><div class="big" id="pBal">–</div><div id="pPnl" class="meta"></div></div>
+      <div class="cd">Next <span id="pCdTf">15m</span> bar close in<br><b id="pCd">–</b><div id="pCdAt"></div></div></div>
+      <div id="pErr" class="err"></div>
+    </div>
+    <div class="card"><div class="legend"><span><i class="dot" style="background:#22c55e"></i>Paper equity since start (USD)</span><span><i class="dot" style="background:#8a93a6"></i>Buy &amp; hold same coins</span></div><div id="ppc"></div></div>
+    <div class="newsig" id="pNew"></div>
     <div class="card">
       <div class="pform">
         <label>Start time (WIB)<input id="pStart" type="datetime-local" step="60"></label>
@@ -270,20 +283,12 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
         <div class="full"><div class="chips" id="pChips"></div></div>
       </div>
       <div class="meta" id="pSetup" style="margin-top:8px"></div>
-      <div id="pErr" class="err"></div>
-    </div>
-    <div class="newsig" id="pNew"></div>
-    <div class="card">
-      <div class="simtag">Browser simulation · not the bot's actual trades</div>
-      <div class="phead"><div><div class="meta">Simulated paper balance (marked to the live price)</div><div class="big" id="pBal">–</div><div id="pPnl" class="meta"></div></div>
-      <div class="cd">Next <span id="pCdTf">15m</span> bar close in<br><b id="pCd">–</b><div id="pCdAt"></div></div></div>
     </div>
     <div class="card"><div class="h3">Coins · Exit Arrow state</div><div class="tblwrap"><table id="pCoins"><thead><tr><th>Coin<span class="sub">price</span></th><th>Position<span class="sub">Exit SSL</span></th><th>Last arrow<span class="sub">bar open WIB</span></th><th>Value $<span class="sub">P&amp;L</span></th></tr></thead><tbody></tbody></table></div><div class="meta" id="pCoinsNote"></div></div>
     <div class="card"><div class="h3">Chart · <span id="ppxTitle"></span></div><div class="pseg cseg" id="ppxSeg"></div>
       <div class="legend"><span><i class="dot" style="background:#3b82f6"></i>Baseline HMA60</span><span><i class="dot" style="background:#a78bfa"></i>Exit SSL HMA15</span><span><i class="dot" style="background:#f59e0b"></i>SSL1</span><span><i class="dot" style="background:#22d3ee"></i>SSL2 (JMA5)</span><span><b class="pos">▲</b>/<b class="neg">▼</b> Exit Arrows · <b style="color:#fde047">B</b>/<b style="color:#fde047">S</b> paper fills</span></div>
       <div id="ppx"></div><div class="meta" id="ppxNote"></div></div>
     <div class="card"><div class="h3">Open positions</div><div class="tblwrap"><table id="pPos"><thead><tr><th>Coin</th><th>Entry<span class="sub">time WIB</span></th><th>Now</th><th>Unreal. $<span class="sub">%</span></th><th>Bars</th></tr></thead><tbody></tbody></table></div><div class="meta" id="pPosNote"></div></div>
-    <div class="card"><div class="legend"><span><i class="dot" style="background:#22c55e"></i>Paper equity since start (USD)</span><span><i class="dot" style="background:#8a93a6"></i>Buy &amp; hold same coins</span></div><div id="ppc"></div></div>
     <div class="card"><div class="h3">Trade log</div><div class="tblwrap"><table id="pLog"><thead><tr><th>Time WIB</th><th>Coin</th><th>Side</th><th>Price</th><th>$ P&amp;L<span class="sub">fee</span></th></tr></thead><tbody></tbody></table></div><div class="meta" id="pLogNote"></div></div>
   </section>
 
@@ -701,8 +706,11 @@ const LOOKBACK_DAYS = {"15m":367,"1h":3*365+5,"4h":3*365+20,"1d":3*365+120,"1w":
 const SOURCES = [
   { name: "api.binance.com", url: "https://api.binance.com/api/v3/klines", iv: tf => tf, max: 1000 },
   { name: "data-api.binance.vision", url: "https://data-api.binance.vision/api/v3/klines", iv: tf => tf, max: 1000 },
-  { name: "api.mexc.com", url: "https://api.mexc.com/api/v3/klines", iv: tf => ({"1h":"60m","1w":"1W"}[tf] || tf), max: 500 },
+  { name: "api-gcp.binance.com", url: "https://api-gcp.binance.com/api/v3/klines", iv: tf => tf, max: 1000 },
+  { name: "api1.binance.com", url: "https://api1.binance.com/api/v3/klines", iv: tf => tf, max: 1000 },
+  { name: "api.gateio.ws", gate: true, url: "https://api.gateio.ws/api/v4/spot/candlesticks", iv: tf => ({"1w":"7d"}[tf] || tf), max: 1000 },   // last resort if every Binance host is blocked on this network
 ];
+const srcDown = {};   // source index -> ms until which it is skipped (timeout / network error), so one blocked host does not stall every request
 const S = Object.assign({ tf: "1h", dir: "long", ex: "baseline", tab: "pap", coin: "BTC", sort: "since", asc: true, cap: 500, auto: true }, JSON.parse(localStorage.getItem("sslh") || "{}"));
 S.tab = ({ "#pap": "pap" })[location.hash] || "bot";   // the Real bot tab is the default on every load
 const SETKEYS = ["tf", "dir", "ex", "cap", "coin"];
@@ -726,28 +734,49 @@ function pump() {
   pump();
 }
 async function getJSON(url) {
-  const ac = new AbortController(); const to = setTimeout(() => ac.abort(), 12000);
+  const ac = new AbortController(); const to = setTimeout(() => ac.abort(), 8000);
   try { const r = await fetch(url, { signal: ac.signal }); if (!r.ok) { const e = new Error("HTTP " + r.status); e.status = r.status; throw e; } return await r.json(); }
   finally { clearTimeout(to); }
 }
-async function klines(sym, tf, opts = {}) {
-  let lastErr;
+function pickSrc(tried) {   // chosen when the request actually starts, so hosts that failed meanwhile are skipped
+  const now = Date.now(); let later = -1;
   for (let k = 0; k < SOURCES.length; k++) {
-    const si = (srcIdx + k) % SOURCES.length, s = SOURCES[si];
-    const p = new URLSearchParams({ symbol: sym, interval: s.iv(tf), limit: String(Math.min(opts.limit || 1000, s.max)) });
+    const si = (srcIdx + k) % SOURCES.length; if (tried.has(si)) continue;
+    if ((srcDown[si] || 0) <= now) return si; if (later < 0) later = si;
+  }
+  return later;
+}
+function srcUrl(s, sym, tf, opts) {
+  const lim = Math.min(opts.limit || 1000, s.max), bar = TF_MS[tf] || 9e5; let p;
+  if (s.gate) {   // Gate.io: currency_pair, seconds; limit cannot be combined with from/to
+    p = new URLSearchParams({ currency_pair: sym.replace(/USDT$/, "_USDT"), interval: s.iv(tf) });
+    if (opts.startTime) { const f = Math.floor(opts.startTime / 1000); p.set("from", String(f)); p.set("to", String(Math.min(f + (lim - 1) * bar / 1000, Math.floor(Date.now() / 1000)))); }
+    else p.set("limit", String(lim));
+  } else {
+    p = new URLSearchParams({ symbol: sym, interval: s.iv(tf), limit: String(lim) });
     if (opts.startTime) p.set("startTime", String(opts.startTime));
+  }
+  return `${s.url}?${p}`;
+}
+async function klines(sym, tf, opts = {}) {
+  let lastErr; const tried = new Set(), bar = TF_MS[tf] || 9e5;
+  while (tried.size < SOURCES.length) {
+    let si = -1;
     try {
-      const raw = await throttled(() => getJSON(`${s.url}?${p}`));
-      sourceOK[s.name] = true;
+      const raw = await throttled(() => { si = pickSrc(tried); tried.add(si); return getJSON(srcUrl(SOURCES[si], sym, tf, opts)); });
+      const s = SOURCES[si]; sourceOK[s.name] = true; srcDown[si] = 0;
       if (si !== srcIdx) srcIdx = si;
+      if (s.gate) return raw.map(r => [Number(r[0]) * 1000, +r[5], +r[3], +r[4], +r[2], Number(r[0]) * 1000 + bar - 1]);
       return raw.map(r => [Number(r[0]), +r[1], +r[2], +r[3], +r[4], Number(r[6])]);
     } catch (e) {
-      lastErr = e; sourceOK[s.name] = false;
-      if (e.status === 400) throw new Error("Unknown symbol " + sym); // invalid symbol: don't try other hosts
+      if (si < 0) throw e;
+      const s = SOURCES[si]; lastErr = e; sourceOK[s.name] = false;
+      if (e.status === 400 && !s.gate) throw new Error("Unknown symbol " + sym); // invalid symbol: don't try other hosts
       if (e.status === 429 || e.status === 418) await new Promise(r => setTimeout(r, 2000));
+      else if (!e.status || e.status === 403 || e.status >= 451) { srcDown[si] = Date.now() + 120000; if (si === srcIdx) srcIdx = (si + 1) % SOURCES.length; }   // blocked / unreachable host
     }
   }
-  throw lastErr || new Error("all sources failed");
+  throw new Error(lastErr && lastErr.name === "AbortError" ? "price servers timed out" : lastErr && !lastErr.status ? "price servers unreachable (" + (lastErr.message || "network") + ")" : (lastErr && lastErr.message) || "all sources failed");
 }
 function toData(rows) {
   const now = Date.now();
@@ -952,13 +981,27 @@ let BAR = 9e5; const PRE_BARS = 1000;   // bar size of the committed paper timef
 const wibToMs = s => { const m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(s || ""); return m ? Date.UTC(+m[1], m[2]-1, +m[3], +m[4], +m[5]) - 7*36e5 : NaN; };
 const msToWibInput = ms => new Date(ms + 7*36e5).toISOString().slice(0, 16);
 const WIBS = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
-const P = Object.assign({ start: "2026-10-27T07:52", cap: 500, mode: "pf", sel: PAPER_DEF.slice(), tf: "15m", rule: "arrow_long" }, JSON.parse(localStorage.getItem("sslh_paper2") || "{}"));
-if (!PTF_MS[P.tf]) P.tf = "15m"; if (!RULES[P.rule]) P.rule = "arrow_long";
+// Default portfolio = the live bot's current coins and start time (./bot.json "universe" / "start_wib"), refreshed on every run.
+// P.bot = true follows the bot; ticking chips by hand switches to a custom selection (the "Bot coins" chip switches back).
+// Settings key bumped to sslh_paper3 so phones that saved the old top-50 defaults (sslh_paper2) pick up the bot's coins.
+let BOTU = null, botuT = 0;   // {coins, start, tf}
+async function botUniverse() {
+  if (BOTU && Date.now() - botuT < 300000) return BOTU;
+  try {
+    const r = await fetch("./bot.json?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) throw new Error(r.status);
+    const j = await r.json(), u = (j.universe || []).filter(c => /^[A-Z0-9]+$/.test(c));
+    if (u.length) { BOTU = { coins: u, start: /^\d{4}-\d\d-\d\d \d\d:\d\d/.test(j.start_wib || "") ? j.start_wib.slice(0, 16).replace(" ", "T") : null, tf: j.tf }; botuT = Date.now(); }
+  } catch (e) { }
+  return BOTU;
+}
+const P = Object.assign({ start: "2026-10-27T07:52", startSet: false, cap: 500, mode: "pf", bot: true, sel: PAPER_DEF.slice(), tf: "15m", rule: "arrow_long" }, JSON.parse(localStorage.getItem("sslh_paper3") || "{}"));
+if (!PTF_MS[P.tf]) P.tf = "15m"; if (!RULES[P.rule]) P.rule = "arrow_long"; if (!Array.isArray(P.sel) || !P.sel.length) P.sel = PAPER_DEF.slice();
+function applyBot(o) { if (BOTU && o.bot) { o.sel = BOTU.coins.slice(); if (!o.startSet && BOTU.start) o.start = BOTU.start; } return o; }
 const PR = JSON.parse(JSON.stringify(P));   // committed paper settings (applied by ▶ Run)
-const savePaper = () => localStorage.setItem("sslh_paper2", JSON.stringify(P));
-const papKey = o => [o.start, o.cap, o.mode, o.mode === "pf" ? o.sel.join(",") : "", o.tf, o.rule].join("|");
+const savePaper = () => localStorage.setItem("sslh_paper3", JSON.stringify(P));
+const papKey = o => [o.startSet || !o.bot ? o.start : "bot", o.cap, o.mode, o.mode === "pf" ? (o.bot ? "bot" : o.sel.join(",")) : "", o.tf, o.rule].join("|");
 const papCoins = o => o.mode === "pf" ? o.sel.slice() : [o.mode];
-const papText = o => `Browser sim · ${o.tf} · Long-only · ${RULES[o.rule]} · ${fmtUsd(o.cap)} · ${o.mode === "pf" ? "Portfolio " + o.sel.join("+") : o.mode} · from ${o.start.replace("T", " ")} WIB`;
+const papText = o => `Browser sim · ${o.tf} · Long-only · ${RULES[o.rule]} · ${fmtUsd(o.cap)} · ${o.mode === "pf" ? (o.bot ? `the live bot's ${o.sel.length} coins: ` : "Portfolio ") + o.sel.join(o.bot ? ", " : "+") : o.mode} · from ${o.start.replace("T", " ")} WIB`;
 const papRun = { key: null, n: 0, total: 0 }, papCache = {};   // sym -> {from, rows}
 let ppChart = null, ppEq = null, ppBh = null, papLast = null, pxChart = null, pxS = {}, pxCoin = null;
 
@@ -966,25 +1009,31 @@ function paperForm() {
   $("pStart").value = P.start; $("pCap").value = P.cap;
   const opts = [["pf", "Portfolio: split capital equally across selected coins"]].concat(COINS.map(c => [c, c + "/USDT only"]));
   $("pMode").innerHTML = opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join(""); $("pMode").value = P.mode;
-  $("pChips").innerHTML = PAPER_COINS.map(c => `<label><input type="checkbox" value="${c}" ${P.sel.includes(c) ? "checked" : ""}>${c}</label>`).join("");
+  applyBot(P);
+  const chips = [...new Set(BOTU ? BOTU.coins.concat(P.sel, ["BTC", "ETH"]) : P.sel.concat(PAPER_COINS))];
+  $("pChips").innerHTML = (BOTU ? `<label class="botc"><input type="checkbox" value="__bot" ${P.bot ? "checked" : ""}>Bot coins (${BOTU.coins.length})</label>` : "") +
+    chips.map(c => `<label><input type="checkbox" value="${c}" ${P.sel.includes(c) ? "checked" : ""}>${c}</label>`).join("");
   $("pChips").classList.toggle("off", P.mode !== "pf");
   $("pRule").innerHTML = Object.entries(RULES).map(([v, l]) => `<option value="${v}">${l}${v === "arrow_long" ? " · default" : ""}</option>`).join(""); $("pRule").value = P.rule;
   $("pTfSeg").innerHTML = Object.keys(PTF_MS).map(t => `<button type="button" data-tf="${t}" class="${P.tf === t ? "on" : ""}">${t}</button>`).join("");
   $("pTfSeg").querySelectorAll("button").forEach(b => b.onclick = e => { e.preventDefault(); P.tf = b.dataset.tf; paperChanged(); });
 }
 function paperChanged() {
-  const st = $("pStart").value; if (isFinite(wibToMs(st))) P.start = st;
+  const st = $("pStart").value; if (isFinite(wibToMs(st)) && st !== P.start) { P.start = st; P.startSet = true; }
   const v = parseFloat($("pCap").value); P.cap = isFinite(v) && v > 0 ? v : 500;
   P.mode = $("pMode").value; P.rule = RULES[$("pRule").value] ? $("pRule").value : "arrow_long";
-  const sel = [...$("pChips").querySelectorAll("input:checked")].map(i => i.value);
-  P.sel = sel.length ? PAPER_COINS.filter(c => sel.includes(c)) : P.sel;   // keep at least one coin
+  const bi = $("pChips").querySelector('input[value="__bot"]'), wasBot = P.bot;
+  const sel = [...$("pChips").querySelectorAll("input:checked")].map(i => i.value).filter(v => v !== "__bot");
+  if (bi && bi.checked && !wasBot) { P.bot = true; applyBot(P); }   // "Bot coins" ticked: follow the live bot again
+  else if (bi && !bi.checked && wasBot) P.bot = false;
+  else if (sel.join(",") !== P.sel.join(",")) { P.bot = false; P.sel = sel.length ? sel : P.sel; }   // a coin chip changed: custom selection (keep at least one coin)
   savePaper(); paperForm(); markStale();
 }
 ["pStart", "pCap", "pMode", "pRule"].forEach(id => $(id).addEventListener("change", paperChanged));
 $("pChips").addEventListener("change", paperChanged);
 $("pReset").onclick = () => {
   if (!confirm("Restart the paper test from now? The current paper results will be replaced (it is only a simulation).")) return;
-  P.start = msToWibInput(Date.now()); savePaper(); paperForm(); runNow();
+  P.start = msToWibInput(Date.now()); P.startSet = true; savePaper(); paperForm(); runNow();
 };
 
 async function paperRows(sym, startMs, tf) {
@@ -1061,20 +1110,32 @@ function paperCoin(rows, startMs, coinCap, rule) {
   res.liveBh = coinCap*live/ds.c[WARMUP];
   return res;
 }
+function papStatus(txt, frac) {   // the visible loading / progress state of the Simulation tab
+  $("pLoad").classList.toggle("on", !!txt); if (txt) $("pLoadT").textContent = txt;
+  $("pLoadB").style.width = Math.round(100 * Math.max(0, Math.min(1, frac || 0))) + "%";
+}
 async function loadPaper() {
+  const quiet = runMode === "auto" && papLast;   // the 60 s refresh keeps the shown results and only shows a small note
+  if (PR.bot && PR.mode === "pf") { if (!quiet) papStatus("Loading the live bot's coins…", 0.02); await botUniverse(); if (BOTU) { applyBot(PR); applyBot(P); paperForm(); } }
   const o = JSON.parse(JSON.stringify(PR)), startMs = wibToMs(o.start), coins = papCoins(o), cc = o.cap/coins.length;
   BAR = PTF_MS[o.tf] || 9e5;
-  $("pErr").textContent = ""; papRun.n = 0; papRun.total = coins.length; runProgress();
+  $("pErr").textContent = ""; papRun.n = 0; papRun.total = coins.length;
+  const t0 = Date.now(), prog = () => papStatus(quiet ? "" : `Loading ${o.tf} price history in your browser… ${papRun.n}/${coins.length} coins · ${Math.round((Date.now() - t0) / 1000)} s (${PRE_BARS} warm-up bars each, via ${SOURCES[srcIdx].name}${Object.values(srcDown).some(v => v > Date.now()) ? ", a price host did not answer, trying backups" : ""})`, 0.05 + 0.95 * papRun.n / Math.max(1, coins.length));
+  const progT = setInterval(prog, 1000);
+  if (!papLast) { $("pBal").textContent = "Loading…"; $("pBal").className = "big"; $("pPnl").textContent = "Fetching price history for " + coins.length + " coin" + (coins.length === 1 ? "" : "s") + "…"; }
+  prog();
   if (!isFinite(startMs)) { $("pErr").textContent = "Invalid start time."; return; }
   if (Date.now() - startMs > 120*864e5) { $("pErr").textContent = "Start time must be within the last 120 days."; return; }
   const errs = [], out = {};
   await Promise.all(coins.map(async c => {
     try { out[c] = paperCoin(await paperRows(c + "USDT", startMs, o.tf), startMs, cc, o.rule); out[c].coin = c; }
     catch (e) { errs.push(c + ": " + e.message); }
-    finally { papRun.n++; runProgress(); }
-  }));
-  if (errs.length) $("pErr").textContent = "Failed: " + errs.join(", ");
-  papLast = { o, startMs, coins, cc, out }; window.__paper = papLast; renderPaper(); papRun.key = papKey(o); stamp();
+    finally { papRun.n++; prog(); }
+  })).finally(() => clearInterval(progT));
+  papStatus("");
+  if (errs.length) $("pErr").textContent = (errs.length === coins.length ? "Could not load any price history (Binance and the backup hosts did not answer from this network). Will retry on the next refresh. " : "Failed: ") + errs.join(", ");
+  if (errs.length === coins.length && papLast) return;   // keep the last good result on screen
+  papLast = { o, startMs, coins, cc, out }; window.__paper = papLast; renderPaper(); papRun.key = errs.length === coins.length ? null : papKey(o); stamp();
 }
 function renderPaper() {
   if (!papLast) return;
@@ -1195,7 +1256,7 @@ function work(mode) {   // mode: "run" (button / first load) or "auto" (60 s ref
   const p = (async () => {
     runMode = mode; runTab = S.tab; /* */ $("refresh").disabled = true; runProgress();
     try {
-      if (runTab === "pap") await loadPaper();
+      if (runTab === "pap") await loadPaper().catch(e => { papStatus(""); $("pErr").textContent = "Simulation error: " + (e && e.message || e); console.error(e); });
       else if (runTab === "det") await loadDetail(mode === "run" ? true : !pChart);
       else await loadSignals();
       if (mode === "run") $("runInfo").textContent = "Last run: " + WIB.format(new Date()) + " WIB";
