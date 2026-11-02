@@ -200,10 +200,11 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
       <div class="rbstale hide" id="rbStale"></div>
       <div class="rbinfo"><b>Data from the 24/7 paper bot, updated every 10 min.</b> Positions as of the export <b id="rbExp">–</b> WIB <span id="rbAgo"></span>; this page re-checks for a new export every 60 s. <b>P&amp;L is marked live</b> in your browser from Binance prices every 5 s. Paper trading only: no exchange keys, no real orders.</div>
       <div class="rb-tf" id="rbTfSeg">
-        <button data-tf="15m" class="on">15m</button>
-        <button data-tf="1h">1h</button>
-        <button data-tf="4h">4h</button>
+        <button type="button" data-tf="15m">15m</button>
+        <button type="button" data-tf="1h">1h</button>
+        <button type="button" data-tf="4h">4h</button>
       </div>
+      <div class="meta" id="rbTfNote">Highlighted = the bot's active timeframe. Tap to change it on GitHub: set tf to 15m, 1h or 4h and commit; the bot switches within ~1 min.</div>
       <div id="rbErr" class="err"></div>
     </div>
     <div class="card" style="text-align:center"><div class="h3">Equity vs buy & hold</div><div class="legend" style="justify-content:center"><span><i class="dot" style="background:#22c55e"></i>Bot</span><span><i class="dot" style="background:#8a93a6"></i>Buy & hold</span></div><div id="rbEq"></div></div>
@@ -228,7 +229,7 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
     <div class="card"><div class="meta" id="rbRules"></div></div>
   </section>
 
-  <section id="vSig" class="hide">
+  <section id="vSig" class="hide" hidden aria-hidden="true"><!-- legacy Signals view: hidden, kept only so the shared JS finds its elements -->
     <div class="card">
       <div class="meta" style="margin-bottom:6px">State on the last <b>closed</b> bar. Highlighted rows (orange dot) flipped within the last 3 bars; Bars = bars since the last baseline signal (↑ long, ↓ short). Tap a header to sort, tap a row for detail. Backtest PF/return/End $ use the last 1000 bars, starting from your capital.</div>
       <div class="tblwrap"><table id="sigT"><thead><tr>
@@ -238,7 +239,7 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
     </div>
   </section>
 
-  <section id="vDet" class="hide">
+  <section id="vDet" class="hide" hidden aria-hidden="true"><!-- legacy Coin detail view: hidden, kept only so the shared JS finds its elements -->
     <div class="card">
       <div class="sym"><select id="coinSel" aria-label="Coin"></select><input id="symIn" placeholder="e.g. WIF" aria-label="Any symbol" autocapitalize="characters"><button id="symGo">Go</button></div>
       <div id="detHead" style="margin-top:10px;font-weight:650"></div>
@@ -396,6 +397,8 @@ if (typeof module !== "undefined") module.exports = { indicator, backtest, metri
    It also recomputes the Exit Arrows on bars that closed after the export (same Pine v6 indicator() as the simulation)
    and shows a "pending" hint only; it never simulates trades into the bot's balance. */
 window.RB = (function () {
+  // highlight the bot's active timeframe (bot.json "tf") on the Real Bot 15m/1h/4h buttons
+  function tfMark() { document.querySelectorAll("#rbTfSeg button").forEach(b => b.classList.toggle("on", !!D && b.dataset.tf === D.tf)); }
   const $ = id => document.getElementById(id);
   const STALE_MIN = 25, TFMS = { "15m": 9e5, "1h": 36e5, "4h": 144e5 }, PRICE_MS = 5000;
   const PX_SRC = [["api.binance.com", "https://api.binance.com/api/v3"], ["data-api.binance.vision", "https://data-api.binance.vision/api/v3"]];
@@ -538,7 +541,7 @@ window.RB = (function () {
     if (onBot()) { $("upd").textContent = "Real bot · exported " + wib(D.exported_ms) + " WIB"; $("src").textContent = V && V.live ? "· live P&L" : ""; }
     liveBadge();
   }
-  function render() { header(); numbers(); equity(); cards(); poolCard(); if (!coin || !D.coins.some(c => c.coin === coin)) coin = D.coins[0] && D.coins[0].coin; coinChart(false); positions(); filters(); trades(); events(); rules(); pendBanner(); }
+  function render() { tfMark(); header(); numbers(); equity(); cards(); poolCard(); if (!coin || !D.coins.some(c => c.coin === coin)) coin = D.coins[0] && D.coins[0].coin; coinChart(false); positions(); filters(); trades(); events(); rules(); pendBanner(); }
 
   function numbers() {
     $("rbBal").textContent = usd(V.balance); $("rbBal").classList.remove("flash"); void $("rbBal").offsetWidth; if (V.live) $("rbBal").classList.add("flash");
@@ -778,6 +781,7 @@ seg($("tfSeg"), TFS.map(t => [t, t]), "tf", markStale);
 seg($("dirSeg"), [["long", "Long-only"], ["ls", "Long+Short"]], "dir", markStale);
 seg($("exSeg"), [["baseline", "Baseline exit"], ["exitssl", "Exit SSL"]], "ex", markStale);
 function setTab(t, load = true) {
+  t = t === "pap" ? "pap" : "bot";   // only two tabs: Simulation (pap) and Real Bot (everything else)
   S.tab = t; save();
   [["bot", "tabBot", "vBot"], ["pap", "tabPap", "vPap"]].forEach(([k, b, v]) => { $(b).className = t === k ? "on" : ""; $(v).className = t === k ? "" : "hide"; });
   document.body.classList.toggle("onPaper", t === "pap"); document.body.classList.toggle("onBot", t === "bot");
@@ -1222,20 +1226,19 @@ $("autoIn").checked = !!S.auto;
 $("autoIn").onchange = () => { S.auto = $("autoIn").checked; save(); };
 S.auto = true; save();   // auto-refresh is always on at page load
 
-// Real Bot TF selector
-// GitHub Pages is a static site and cannot send authenticated commands to the remote bot.
-// Until a secure remote control API is configured, don't pretend a timeframe change succeeded.
+// Real Bot TF selector: the page is static and holds no tokens, so a tap opens control/tf.json in GitHub's editor.
+// Commit {"tf":"1h",...} there; the box polls that file every ~60 s and switches the paper bot live.
+const TF_EDIT_URL = "https://github.com/dedkovic441-hub/ssl-hybrid-dashboard/edit/main/control/tf.json";
 document.querySelectorAll("#rbTfSeg button").forEach(btn => {
   btn.onclick = () => {
     const tf = btn.dataset.tf;
     if (!["15m", "1h", "4h"].includes(tf)) return;
-    const note = document.getElementById("rbErr");
+    const note = document.getElementById("rbTfNote");
     if (note) {
-      note.textContent = "Remote control is not connected. No command was sent; the paper bot remains on its current timeframe. Requested: " + tf + ".";
-      note.classList.remove("hide");
-      note.setAttribute("role", "status");
-      note.setAttribute("aria-live", "polite");
+      note.textContent = (btn.classList.contains("on") ? tf + " is already active. " : "Requested " + tf + ": ") + "Set tf to 15m, 1h or 4h and commit; the bot switches within ~1 min.";
+      note.setAttribute("role", "status"); note.setAttribute("aria-live", "polite");
     }
+    window.open(TF_EDIT_URL, "_blank", "noopener");
   };
 });
 
