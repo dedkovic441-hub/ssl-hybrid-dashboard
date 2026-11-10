@@ -104,9 +104,12 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
 .cap input{width:130px;text-align:right;font-variant-numeric:tabular-nums}
 @media(min-width:760px){.pform{grid-template-columns:1.3fr 1fr 1fr 1fr}#ppc{height:280px}#ppx{height:420px}.ctl{grid-template-columns:1.4fr 1fr 1fr 1fr}.runbar,.runinfo,.stale{grid-column:1/-1}.kpis{grid-template-columns:repeat(4,1fr)}#pc{height:440px}#ec{height:260px}}
 /* ---- Real bot tab ---- */
-.rb-tf{display:flex;gap:6px;margin:8px 0}
+.rb-ctl{margin-top:8px}
+.rb-tf{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap}
 .rb-tf button{flex:1;min-height:40px;font-size:14px;font-weight:600}
 .rb-tf button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.rb-tf button.req{background:#1e3a8a;border-color:#2563eb;color:#fff;animation:blink 1s infinite}
+.tagS{background:rgba(239,68,68,.18);color:var(--dn);border-radius:6px;padding:1px 7px;font-size:11px;font-weight:750}
 
 /* controls moved inside Simulation tab */
 #tabBot{font-weight:650}
@@ -206,12 +209,24 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
       <div class="rbdet" id="rbDetail"></div>
       <div class="rbstale hide" id="rbStale"></div>
       <div class="rbinfo"><b>Data from the 24/7 paper bot, updated every 10 min.</b> Positions as of the export <b id="rbExp">–</b> WIB <span id="rbAgo"></span>; this page re-checks for a new export every 60 s. <b>P&amp;L is marked live</b> in your browser from Binance prices every 5 s. Paper trading only: no exchange keys, no real orders.</div>
-      <div class="rb-tf" id="rbTfSeg">
-        <button type="button" data-tf="15m">15m</button>
-        <button type="button" data-tf="1h">1h</button>
-        <button type="button" data-tf="4h">4h</button>
+      <div class="rb-ctl">
+        <div class="rb-tf" id="rbTfSeg">
+          <button type="button" data-tf="15m">15m</button>
+          <button type="button" data-tf="1h">1h</button>
+          <button type="button" data-tf="4h">4h</button>
+        </div>
+        <div class="meta" id="rbTfNote">Highlighted = the bot's active timeframe. Tap to change it on GitHub: set tf to 15m, 1h or 4h and commit; the bot switches within ~1 min.</div>
+        <div class="rb-tf" id="rbFltSeg">
+          <button type="button" data-filter="off">Filter OFF</button>
+          <button type="button" data-filter="on">Filter ON +2%/24h</button>
+        </div>
+        <div class="meta" id="rbFltNote">Entry filter: when ON, a new long needs the coin up at least +2% over the last 24 hours (15m candles); a new short needs it down at least −2%. Tap to edit control/filters.json on GitHub and commit; the bot picks it up within ~1 min. Existing positions and exits are unchanged.</div>
+        <div class="rb-tf" id="rbSidesSeg">
+          <button type="button" data-sides="long">Long-only</button>
+          <button type="button" data-sides="ls">Long+Short</button>
+        </div>
+        <div class="meta" id="rbSidesNote">Long+Short (1x paper): an up arrow closes a short and opens a long; a down arrow closes a long and opens a short. Switching to Long-only closes open shorts immediately. Tap to edit control/sides.json on GitHub and commit.</div>
       </div>
-      <div class="meta" id="rbTfNote">Highlighted = the bot's active timeframe. Tap to change it on GitHub: set tf to 15m, 1h or 4h and commit; the bot switches within ~1 min.</div>
       <div id="rbErr" class="err"></div>
     </div>
     <div class="card" style="text-align:center"><div class="h3">Equity vs buy & hold</div><div class="legend" style="justify-content:center"><span><i class="dot" style="background:#22c55e"></i>Bot</span><span><i class="dot" style="background:#8a93a6"></i>Buy & hold</span></div><div id="rbEq"></div></div>
@@ -374,8 +389,6 @@ if (typeof module !== "undefined") module.exports = { indicator, backtest, metri
    It also recomputes the Exit Arrows on bars that closed after the export (same Pine v6 indicator() as the simulation)
    and shows a "pending" hint only; it never simulates trades into the bot's balance. */
 window.RB = (function () {
-  // highlight the bot's active timeframe (bot.json "tf") on the Real Bot 15m/1h/4h buttons
-  function tfMark() { document.querySelectorAll("#rbTfSeg button").forEach(b => b.classList.toggle("on", !!D && b.dataset.tf === D.tf)); }
   const $ = id => document.getElementById(id);
   const STALE_MIN = 25, TFMS = { "15m": 9e5, "1h": 36e5, "4h": 144e5 }, PRICE_MS = 5000;
   const PX_SRC = [["api.binance.com", "https://api.binance.com/api/v3"], ["data-api.binance.vision", "https://data-api.binance.vision/api/v3"]];
@@ -419,18 +432,37 @@ window.RB = (function () {
     let bal = D.pool && num(D.pool.cash) ? D.pool.cash : 0, bh = 0;
     v.coins = D.coins.map(c0 => {
       const c = Object.assign({}, c0), k = c0.calc || {}, p = live && num(LP[c0.symbol]) ? LP[c0.symbol] : null;
+      const side = (k.side || c.pos || "").toLowerCase();
+      const held = num(k.units) && k.units > 0;
+      const isShort = held && side === "short";
+      const isLong = held && !isShort;
+      if (held) c.pos = isShort ? "short" : "long";
       if (p != null) {
-        const long = num(k.units) && k.units > 0;
-        c.price = p; c.value = long ? k.units * p : k.value_close;
+        c.price = p;
+        if (isShort) {
+          const coll = num(k.collateral) ? k.collateral : (num(k.entry_px) ? k.units * k.entry_px : (k.cost || 0) * (1 - fee));
+          c.value = Math.max(2 * coll - k.units * p, 0);
+          c.unreal = c.value - k.cost; c.unreal_pct = k.cost ? c.value / k.cost - 1 : null;
+        } else if (isLong) {
+          c.value = k.units * p;
+          c.unreal = c.value - k.cost; c.unreal_pct = k.cost ? c.value / k.cost - 1 : null;
+        } else {
+          c.value = k.value_close;
+        }
         c.bh_value = num(k.bh_c0) && k.bh_c0 > 0 ? k.alloc * p / k.bh_c0 : k.bh_value_close;
-        c.unreal = long ? c.value - k.cost : null; c.unreal_pct = long ? c.value / k.cost - 1 : null;
         if (num(c.exit_line)) { c.vs_exit_pct = p / c.exit_line - 1; c.above_exit = p > c.exit_line; }
         c.live = true;
       }
-      if (num(k.units) && k.units > 0 && num(c.price)) {   // TP/SL: net P&L if sold now (entry fee in cost, 0.1% exit fee)
-        c.net = k.units * c.price * (1 - fee) - k.cost;
+      if (held && num(c.price)) {   // TP/SL: net P&L if closed now (entry fee in cost, 0.1% exit fee)
+        if (isShort) {
+          const coll = num(k.collateral) ? k.collateral : (num(k.entry_px) ? k.units * k.entry_px : (k.cost || 0) * (1 - fee));
+          c.net = Math.max(2 * coll - k.units * c.price, 0) * (1 - fee) - k.cost;
+          c.hit = num(k.sl_px) && c.price >= k.sl_px ? "SL" : num(k.tp_px) && c.price <= k.tp_px ? "TP" : null;
+        } else {
+          c.net = k.units * c.price * (1 - fee) - k.cost;
+          c.hit = num(k.sl_px) && c.price <= k.sl_px ? "SL" : num(k.tp_px) && c.price >= k.tp_px ? "TP" : null;
+        }
         c.to_tp = num(k.tp_px) ? k.tp_px / c.price - 1 : null; c.to_sl = num(k.sl_px) ? k.sl_px / c.price - 1 : null;
-        c.hit = num(k.sl_px) && c.price <= k.sl_px ? "SL" : num(k.tp_px) && c.price >= k.tp_px ? "TP" : null;
       }
       bal += num(c.value) ? c.value : 0; bh += num(c.bh_value) ? c.bh_value : 0;
       return c;
@@ -504,21 +536,18 @@ window.RB = (function () {
     $("rbPill").className = "pill " + (st === "RUNNING" ? "run" : st === "PAUSED" ? "pau" : "stp"); $("rbPillT").textContent = st;
     $("rbStalePill").classList.toggle("hide", !stale); $("rbStale").classList.toggle("hide", !stale);
     if (stale) $("rbStale").textContent = `STALE: the last export is ${ageMin >= 120 ? (ageMin / 60).toFixed(1) + " h" : Math.round(ageMin) + " min"} old (expected every 10 min). The box or its publisher may be offline, so the status and positions below may be out of date (prices are still live).`;
-    $("rbMode").innerHTML = `${esc(D.mode)} · <b>${esc(D.tf)}</b> · <span class="szp sig">${esc(D.signal_timing_text || "Signals: on candle close")}</span> · since ${esc(D.start_wib)} WIB` + (D.pool ? ` <span class="szp">Max positions ${D.pool.max_positions} · pool sizing · ${D.pool.slots_used}/${D.pool.max_positions}</span>` : "");
+    $("rbMode").innerHTML = `${esc(D.mode)} · <b>${esc(D.tf)}</b> · <span class="szp sig">${esc(D.sides_text || (D.sides === "long" ? "Long-only" : "Long+Short"))}</span> · <span class="szp sig">filter ${D.entry_filter_2pct ? "ON +2%/24h" : "OFF"}</span> · <span class="szp sig">${esc(D.signal_timing_text || "Signals: on candle close")}</span> · since ${esc(D.start_wib)} WIB` + (D.pool ? ` <span class="szp">Max positions ${D.pool.max_positions} · pool sizing · ${D.pool.slots_used}/${D.pool.max_positions}</span>` : "");
     let det = st === "RUNNING" ? "Bot alive" + (num(D.hb_age_s) ? `, heartbeat ${Math.round(D.hb_age_s)} s before the export` : "") : (D.status_detail || "");
     if (D.paused) det = `Paused since ${D.paused.since_wib} WIB: ${D.paused.reason}. No new entries; exits still follow the rules.`;
     $("rbDetail").textContent = det + (D.heartbeat_wib ? ` (last heartbeat ${D.heartbeat_wib.slice(11, 19)} WIB)` : "");
-    $("rbExp").textContent = wib(D.exported_ms);
-
-    document.querySelectorAll("#rbTfSeg button").forEach(b => b.classList.toggle("on", b.dataset.tf === D.tf));
- $("rbAgo").textContent = `(${ageMin < 1 ? "<1" : Math.round(ageMin)} min ago)`;
+    $("rbExp").textContent = wib(D.exported_ms); $("rbAgo").textContent = `(${ageMin < 1 ? "<1" : Math.round(ageMin)} min ago)`;
     document.querySelectorAll("#vBot .asof").forEach(e => e.textContent = WIBH.format(new Date(D.positions_as_of_ms || D.exported_ms)));
     const tb = TFMS[D.tf] || 9e5, now = Date.now(), nx = Math.ceil((now + 1) / tb) * tb, s = Math.round((nx - now) / 1000);
     $("rbTf").textContent = D.tf; $("rbCd").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; $("rbCdAt").textContent = "at " + WIBH.format(new Date(nx)) + " WIB";
     if (onBot()) { $("upd").textContent = "Real bot · exported " + wib(D.exported_ms) + " WIB"; $("src").textContent = V && V.live ? "· live P&L" : ""; }
-    liveBadge();
+    liveBadge(); ctlMark();
   }
-  function render() { tfMark(); header(); numbers(); equity(); cards(); poolCard(); if (!coin || !D.coins.some(c => c.coin === coin)) coin = D.coins[0] && D.coins[0].coin; coinChart(false); positions(); filters(); trades(); events(); rules(); pendBanner(); }
+  function render() { header(); numbers(); equity(); cards(); poolCard(); if (!coin || !D.coins.some(c => c.coin === coin)) coin = D.coins[0] && D.coins[0].coin; coinChart(false); positions(); filters(); trades(); events(); rules(); pendBanner(); }
 
   function numbers() {
     $("rbBal").textContent = usd(V.balance); $("rbBal").classList.remove("flash"); void $("rbBal").offsetWidth; if (V.live) $("rbBal").classList.add("flash");
@@ -547,7 +576,7 @@ window.RB = (function () {
 
   function cards() {
     if (!V) return;
-    const IB = D.signal_timing === "intrabar", held = V.coins.filter(c => c.pos === "long"), rest = V.coins.filter(c => c.pos !== "long");
+    const IB = D.signal_timing === "intrabar", held = V.coins.filter(c => c.pos === "long" || c.pos === "short"), rest = V.coins.filter(c => c.pos !== "long" && c.pos !== "short");
     const mini = c => {
       const up = c.arrow === "up", la = c.live_arrow > 0 ? `<b class="pos">▲ live</b>` : c.live_arrow < 0 ? `<b class="neg">▼ live</b>` : c.arrow ? `<b class="${up ? "pos" : "neg"}">${up ? "▲" : "▼"}</b>${num(c.bars_since) ? c.bars_since : ""}` : "–";
       const p = pend[c.coin], pd = p && p.act ? `<div class="pd">⏳ ${IB ? "arrow after export" : "pending " + p.act}</div>` : "";
@@ -558,9 +587,12 @@ window.RB = (function () {
     $("rbCards").innerHTML = held.map(c => {
       const up = c.arrow === "up", ar = c.arrow ? `<b class="${up ? "pos" : "neg"}">${up ? "▲" : "▼"}</b> ${esc((c.arrow_wib || "").slice(11))}${num(c.bars_since) ? ` (${c.bars_since} bars)` : ""}` : "no arrow";
       const ex = num(c.vs_exit_pct) ? `<span class="${c.vs_exit_pct >= 0 ? "pos" : "neg"}">${c.vs_exit_pct >= 0 ? "above" : "below"} exit ${pct(c.vs_exit_pct)}</span>` : "";
-      const pl = c.pos === "long" ? `<span class="${cls(c.unreal)}">${usd(c.unreal, 1)} (${pct(c.unreal_pct)})</span><br>entry ${px(c.entry)}` + (num(c.tp_px) ? `<br><span class="pos">TP ${px(c.tp_px)}</span> ${pct(c.to_tp, 1)}<br><span class="neg">SL ${px(c.sl_px)}</span> ${pct(c.to_sl, 1)}` : "") : (D.pool ? "in pool cash" : `cash ${usd(c.value)}`);
+      const heldP = c.pos === "long" || c.pos === "short";
+      const pl = heldP ? `<span class="${cls(c.unreal)}">${usd(c.unreal, 1)} (${pct(c.unreal_pct)})</span><br>entry ${px(c.entry)}` + (num(c.tp_px) ? `<br><span class="pos">TP ${px(c.tp_px)}</span> ${pct(c.to_tp, 1)}<br><span class="neg">SL ${px(c.sl_px)}</span> ${pct(c.to_sl, 1)}` : "") : (D.pool ? "in pool cash" : `cash ${usd(c.value)}`);
       const p = pend[c.coin], pd = (c.hit ? `<div class="pd hit">⚠ ${c.hit} hit, bot will close</div>` : "") + (p && p.act ? `<div class="pd">⏳ pending: bot will ${p.act === "BUY" && D.pool && !D.pool.free_slots ? "skip (slots full)" : p.act} at next open</div>` : "");
-      return `<button class="cc wide${c.coin === coin ? " sel" : ""}" data-c="${esc(c.coin)}"><div class="t"><span class="n">${esc(c.coin)}${c.rank ? ` <small class="meta">#${c.rank}</small>` : ""}</span><span class="${c.pos === "long" ? "tagL" : "tagC"}">${c.pos === "long" ? "LONG" : "CASH"}</span></div>
+      const tag = c.pos === "short" ? "tagS" : c.pos === "long" ? "tagL" : "tagC";
+      const lab = c.pos === "short" ? "SHORT" : c.pos === "long" ? "LONG" : "CASH";
+      return `<button class="cc wide${c.coin === coin ? " sel" : ""}" data-c="${esc(c.coin)}"><div class="t"><span class="n">${esc(c.coin)}${c.rank ? ` <small class="meta">#${c.rank}</small>` : ""}</span><span class="${tag}">${lab}</span></div>
         <div class="px">${px(c.price)}</div><div class="m">${pl}${c.entry_reason ? ` <span class="rs ${esc(c.entry_reason)}">${esc(c.entry_reason)}</span>` : ""}<br>Last ${ar}<br>${ex}</div>${pd}</button>`;
     }).join("") + rest.map(mini).join("");
     $("rbCards").querySelectorAll(".cc").forEach(b => b.onclick = () => { coin = b.dataset.c; localStorage.setItem("rbCoin", coin); cards(); coinChart(true); });
@@ -600,11 +632,15 @@ window.RB = (function () {
     const tset = new Set(ch.t), m = [];
     if (TOG.arrows) { (ch.au || []).forEach(t => tset.has(t) && m.push({ time: T(t), position: "belowBar", color: "#22c55e", shape: "arrowUp", size: 1 }));
       (ch.ad || []).forEach(t => tset.has(t) && m.push({ time: T(t), position: "aboveBar", color: "#ef4444", shape: "arrowDown", size: 1 })); }
-    if (TOG.fills) (ch.fills || []).forEach(f => { const t = tset.has(f.t) ? f.t : ch.t.find(x => x >= f.t); if (t != null) m.push({ time: T(t), position: f.side === "BUY" ? "belowBar" : "aboveBar", color: "#fde047", shape: f.side === "BUY" ? "arrowUp" : "arrowDown", text: f.side === "BUY" ? "B" : "S" + (num(f.pnl) ? " " + usd(f.pnl, 1) : "") }); });
+    if (TOG.fills) (ch.fills || []).forEach(f => { const t = tset.has(f.t) ? f.t : ch.t.find(x => x >= f.t); if (t == null) return;
+      const open = f.side === "BUY" || f.side === "SHORT";
+      const lab = f.side === "BUY" ? "B" : f.side === "SHORT" ? "Sh" : f.side === "COVER" ? "C" : "S";
+      m.push({ time: T(t), position: open ? "belowBar" : "aboveBar", color: f.side === "SHORT" || f.side === "COVER" ? "#f87171" : "#fde047", shape: open ? "arrowUp" : "arrowDown", text: lab + (num(f.pnl) ? " " + usd(f.pnl, 1) : "") }); });
     m.sort((a, b) => a.time - b.time); cs.setMarkers(m);
-    if (c.pos === "long" && num(c.entry)) cs.createPriceLine({ price: c.entry, color: "#fde047", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "entry" });
-    if (c.pos === "long" && num(c.tp_px)) cs.createPriceLine({ price: c.tp_px, color: "#22c55e", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "TP +$" + (D.pool && D.pool.tp_usd) });
-    if (c.pos === "long" && num(c.sl_px)) cs.createPriceLine({ price: c.sl_px, color: "#ef4444", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "SL −$" + (D.pool && D.pool.sl_usd) });
+    const heldC = c.pos === "long" || c.pos === "short";
+    if (heldC && num(c.entry)) cs.createPriceLine({ price: c.entry, color: "#fde047", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "entry" });
+    if (heldC && num(c.tp_px)) cs.createPriceLine({ price: c.tp_px, color: "#22c55e", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "TP +$" + (D.pool && D.pool.tp_usd) });
+    if (heldC && num(c.sl_px)) cs.createPriceLine({ price: c.sl_px, color: "#ef4444", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "SL −$" + (D.pool && D.pool.sl_usd) });
     const n = ch.t.length, vis = window.innerWidth < 760 ? 80 : 150;
     if (n > vis) pxC.timeScale().setVisibleLogicalRange({ from: n - vis, to: n + 1 }); else pxC.timeScale().fitContent();
     livePriceLine(); cinfo();
@@ -613,7 +649,8 @@ window.RB = (function () {
   }
   function cinfo() {
     const c = V && V.coins.find(x => x.coin === coin); if (!c) return;
-    const I = [["Position", c.pos === "long" ? "LONG" : "CASH"], ["Price" + (c.live ? " · live" : ""), px(c.price)], ["Entry", c.pos === "long" ? px(c.entry) : "–"], ["Unrealised", c.pos === "long" ? usd(c.unreal, 1) + " · " + pct(c.unreal_pct) : "–"],
+    const heldI = c.pos === "long" || c.pos === "short";
+    const I = [["Position", c.pos === "short" ? "SHORT" : c.pos === "long" ? "LONG" : "CASH"], ["Price" + (c.live ? " · live" : ""), px(c.price)], ["Entry", heldI ? px(c.entry) : "–"], ["Unrealised", heldI ? usd(c.unreal, 1) + " · " + pct(c.unreal_pct) : "–"],
       ["Exit line", px(c.exit_line)], ["Price vs exit", num(c.vs_exit_pct) ? pct(c.vs_exit_pct) + (c.above_exit ? " above" : " below") : "–"], ["Last arrow", c.arrow ? (c.arrow === "up" ? "▲ up " : "▼ down ") + (c.arrow_wib || "").slice(11) : "–"], ["Baseline", px(c.baseline)],
       ["Units", num(c.units) ? String(+c.units.toPrecision(6)) : "–"], ...(num(c.tp_px) ? [["TP · to go", px(c.tp_px) + " · " + pct(c.to_tp)], ["SL · to go", px(c.sl_px) + " · " + pct(c.to_sl)], ["Net if sold", usd(c.net, 1)], ["Slot size", usd(c.size)]] : []), ["Realised", usd(c.realised, 1)], ["Value now", usd(c.value)], ["Buy & hold value", usd(c.bh_value)]];
     $("rbCinfo").innerHTML = I.map(([l, v]) => `<div>${esc(l)}<b>${esc(v)}</b></div>`).join("");
@@ -621,7 +658,8 @@ window.RB = (function () {
 
   function positions() {
     if (!V) return; const o = V.open || [];
-    $("rbPos").tBodies[0].innerHTML = o.map(p => `<tr><td><b>${esc(p.coin)}</b><span class="sub">${usd(p.cost)}</span></td><td>${px(p.entry)}<span class="sub">${esc(p.entry_wib)}</span></td><td>${px(p.price)}<span class="sub ${cls(p.net)}">${usd(p.net, 1)}</span></td><td><span class="pos">${px(p.tp_px)}</span><span class="sub neg">${px(p.sl_px)}</span></td><td class="${cls(p.unreal)}">${usd(p.unreal, 1)}<span class="sub">${pct(p.unreal_pct)}</span>${p.hit ? `<span class="sub rbhit">⚠ ${p.hit} hit, bot will close</span>` : ""}</td></tr>`).join("");
+    $("rbPos").tBodies[0].innerHTML = o.map(p => { const sd = String(p.side || p.pos || "LONG").toUpperCase();
+      return `<tr><td><b>${esc(p.coin)}</b><span class="sub"><span class="${sd === "SHORT" ? "tagS" : "tagL"}">${sd}</span> ${usd(p.cost)}</span></td><td>${px(p.entry)}<span class="sub">${esc(p.entry_wib)}</span></td><td>${px(p.price)}<span class="sub ${cls(p.net)}">${usd(p.net, 1)}</span></td><td><span class="pos">${px(p.tp_px)}</span><span class="sub neg">${px(p.sl_px)}</span></td><td class="${cls(p.unreal)}">${usd(p.unreal, 1)}<span class="sub">${pct(p.unreal_pct)}</span>${p.hit ? `<span class="sub rbhit">⚠ ${p.hit} hit, bot will close</span>` : ""}</td></tr>`; }).join("");
     const tot = o.reduce((a, p) => a + (p.unreal || 0), 0);
     $("rbPosNote").innerHTML = o.length ? `${o.length} open · unrealised <span class="${cls(tot)}">${usd(tot, 1)}</span>${V.live ? " (live)" : ""} · TP/SL = price where the net P&amp;L (after both fees) is +$${D.pool ? D.pool.tp_usd : "–"} / −$${D.pool ? D.pool.sl_usd : "–"}` : "No open positions: all coins are in cash.";
   }
@@ -635,7 +673,8 @@ window.RB = (function () {
   }
   function trades() {
     const t = (D.trades || []).filter(x => (fCoin === "ALL" || x.coin === fCoin) && (fRes === "all" || (fRes === "win" ? x.pnl > 0 : x.pnl <= 0)));
-    $("rbTr").tBodies[0].innerHTML = t.map(x => `<tr><td>${esc((x.out || "").slice(5))}<span class="sub">${esc((x.in || "").slice(5))}</span></td><td><b>${esc(x.coin)}</b><span class="sub">${esc(x.tf || "")}</span></td><td>${px(x.entry)}<span class="sub">${px(x.exit)}</span></td><td class="${cls(x.pnl)}">${usd(x.pnl, 1)}<span class="sub">${pct(x.ret)}${x.entry_reason ? `<span class="rs ${esc(x.entry_reason)}">in ${esc(x.entry_reason)}</span>` : ""}<span class="rs ${esc(x.reason || "ARROW")}">${esc(x.reason || "ARROW")}</span></span></td></tr>`).join("") || `<tr><td colspan="4" class="empty">No closed trades match this filter.</td></tr>`;
+    $("rbTr").tBodies[0].innerHTML = t.map(x => { const sd = String(x.side || "long").toUpperCase();
+      return `<tr><td>${esc((x.out || "").slice(5))}<span class="sub">${esc((x.in || "").slice(5))}</span></td><td><b>${esc(x.coin)}</b><span class="sub"><span class="${sd === "SHORT" ? "tagS" : "tagL"}">${sd}</span> ${esc(x.tf || "")}</span></td><td>${px(x.entry)}<span class="sub">${px(x.exit)}</span></td><td class="${cls(x.pnl)}">${usd(x.pnl, 1)}<span class="sub">${pct(x.ret)}${x.entry_reason ? `<span class="rs ${esc(x.entry_reason)}">in ${esc(x.entry_reason)}</span>` : ""}<span class="rs ${esc(x.reason || "ARROW")}">${esc(x.reason || "ARROW")}</span></span></td></tr>`; }).join("") || `<tr><td colspan="4" class="empty">No closed trades match this filter.</td></tr>`;
     const s = t.reduce((a, x) => a + (x.pnl || 0), 0), w = t.filter(x => x.pnl > 0).length;
     $("rbTrNote").innerHTML = `${t.length} trade${t.length === 1 ? "" : "s"} · ${w} win${w === 1 ? "" : "s"} · total <span class="${cls(s)}">${usd(s, 1)}</span> (fees included). Newest first; the export keeps the last 200.`;
   }
@@ -671,12 +710,15 @@ window.RB = (function () {
     $("rbPoolSum").innerHTML = `${P.slots_used}/${P.max_positions} slots` + (P.slots.length ? ` · P&amp;L <b class="${cls(pnl)}">${usd(pnl, 1)}</b>` : "");
     applyPoolCollapse();
     const sl = P.slots.map(s => { const c = V.coins.find(x => x.coin === s.coin) || {};
-      return `<div class="slot"><b>${esc(s.coin)}</b> LONG · size <b>${usd(s.cost)}</b> · value ${usd(c.value)} · net if sold <b class="${cls(c.net)}">${usd(c.net, 1)}</b>${c.hit ? ` <b class="rbhit">⚠ ${c.hit} hit, bot will close</b>` : ""}<br>entry ${px(s.entry)} · now ${px(c.price)}<br><span class="pos">TP ${px(s.tp_px)}</span> (${pct(c.to_tp)}) · <span class="neg">SL ${px(s.sl_px)}</span> (${pct(c.to_sl)})</div>`; });
-    for (let i = P.slots.length; i < P.max_positions; i++) sl.push(`<div class="slot free">Free slot · the next up arrow buys <b>${usd(P.next_trade_size)}</b> (equity ÷ ${P.max_positions}, capped at cash)</div>`);
+      const sd = String(s.side || c.pos || "long").toUpperCase();
+      return `<div class="slot"><b>${esc(s.coin)}</b> <span class="${sd === "SHORT" ? "tagS" : "tagL"}">${sd}</span> · size <b>${usd(s.cost)}</b> · value ${usd(c.value)} · net if sold <b class="${cls(c.net)}">${usd(c.net, 1)}</b>${c.hit ? ` <b class="rbhit">⚠ ${c.hit} hit, bot will close</b>` : ""}<br>entry ${px(s.entry)} · now ${px(c.price)}<br><span class="pos">TP ${px(s.tp_px)}</span> (${pct(c.to_tp)}) · <span class="neg">SL ${px(s.sl_px)}</span> (${pct(c.to_sl)})</div>`; });
+    const nextLab = (D.sides === "long") ? "the next up arrow buys" : "the next arrow opens";
+    for (let i = P.slots.length; i < P.max_positions; i++) sl.push(`<div class="slot free">Free slot · ${nextLab} <b>${usd(P.next_trade_size)}</b> (equity ÷ ${P.max_positions}, capped at cash)</div>`);
     $("rbSlots").innerHTML = sl.join("");
-    $("rbPoolN").innerHTML = `One shared cash pool since ${esc((P.since_wib || "").slice(0, 16))} WIB. Size per trade = equity ÷ max positions, capped at pool cash. More up arrows than free slots at once → the strongest (close − exit line)/ATR wins. TP/SL checked by the bot every 5 s (sold at the level price), catch-up on bar high/low with SL first; after TP/SL a coin needs a new up arrow.` +
+    $("rbPoolN").innerHTML = `One shared cash pool since ${esc((P.since_wib || "").slice(0, 16))} WIB. Size per trade = equity ÷ max positions, capped at pool cash. ${D.sides === "long" ? "Long-only: up arrow buys, down arrow sells." : "Long+Short (1x paper): up arrow closes a short and opens a long; down arrow closes a long and opens a short."} More arrows than free slots at once → the strongest (close − exit line)/ATR wins. TP/SL checked by the bot every 5 s (closed at the level price), catch-up on bar high/low with SL first; after TP/SL a coin needs a new arrow.` +
       (P.switches || []).map(s => `<br>${esc(s.at_wib.slice(5, 16))} ${esc(s.why)}: equity ${usd(s.equity_before)} → ${usd(s.equity_after)} (fee ${usd(s.fees)})`).join("");
-    $("rbSkip").innerHTML = (P.skipped || []).map(k => `<div class="skp">${esc((k.wib || "").slice(5))} · <b>${esc(k.coin)}</b> ▲ ${esc(k.tf || "")} skipped: ${esc(k.reason)} (${esc((k.held || []).join("+"))} held, strength ${num(k.strength) ? k.strength.toFixed(2) : "–"})</div>`).join("") || `<div class="meta">None yet (${P.n_skipped || 0}).</div>`;
+    $("rbSkip").innerHTML = (P.skipped || []).map(k => { const want = (k.side || "long") === "short" ? "▼ short" : "▲ long"; const ret = num(k.ret_24h) ? ` · 24h ${pct(k.ret_24h, 2)}` : "";
+      return `<div class="skp">${esc((k.wib || "").slice(5))} · <b>${esc(k.coin)}</b> ${want} ${esc(k.tf || "")} skipped: ${esc(k.reason)}${ret} (${esc((k.held || []).join("+"))} held, strength ${num(k.strength) ? k.strength.toFixed(2) : "–"})</div>`; }).join("") || `<div class="meta">None yet (${P.n_skipped || 0}).</div>`;
   }
   function rules() {
     const r = D.rules || {};
@@ -691,6 +733,54 @@ window.RB = (function () {
   setInterval(() => { if (onBot() && !document.hidden) load(); }, 60000);
   setInterval(() => { if (D && onBot() && !document.hidden) { const tb = TFMS[D.tf] || 9e5; if (Math.floor(Date.now() / tb) !== Math.floor(pendT / tb) && Date.now() % tb > 20000) arrows(); } }, 10000);   // new bar closed -> re-check arrows
   document.addEventListener("visibilitychange", () => { if (!document.hidden && onBot()) { prices(); if (Date.now() - lastFetch > 30000) load(); } });
+
+  const EDIT = "https://github.com/dedkovic441-hub/ssl-hybrid-dashboard/edit/main/";
+  let REQ = { tf: null, filter: null, sides: null };
+  try { REQ = Object.assign(REQ, JSON.parse(sessionStorage.getItem("sslHybrid.ctlPending") || "{}")); } catch (e) {}
+  function saveReq() { try { sessionStorage.setItem("sslHybrid.ctlPending", JSON.stringify(REQ)); } catch (e) {} }
+  function ctlMark() {
+    if (!D) return;
+    const curF = !!D.entry_filter_2pct, curS = (D.sides === "long") ? "long" : "ls";
+    if (REQ.tf && REQ.tf === D.tf) REQ.tf = null;
+    if (REQ.filter != null && !!REQ.filter === curF) REQ.filter = null;
+    if (REQ.sides && REQ.sides === curS) REQ.sides = null;
+    saveReq();
+    document.querySelectorAll("#rbTfSeg button").forEach(b => { b.className = (b.dataset.tf === D.tf) ? "on" : (b.dataset.tf === REQ.tf ? "req" : ""); });
+    document.querySelectorAll("#rbFltSeg button").forEach(b => {
+      const on = b.dataset.filter === "on";
+      b.className = (on === curF) ? "on" : (REQ.filter != null && on === !!REQ.filter ? "req" : "");
+    });
+    document.querySelectorAll("#rbSidesSeg button").forEach(b => {
+      b.className = (b.dataset.sides === curS) ? "on" : (b.dataset.sides === REQ.sides ? "req" : "");
+    });
+  }
+  function bindCtl(sel, noteId, kind) {
+    document.querySelectorAll(sel).forEach(btn => {
+      btn.onclick = () => {
+        const note = $(noteId);
+        if (kind === "tf") {
+          const tf = btn.dataset.tf; if (!["15m", "1h", "4h"].includes(tf)) return;
+          REQ.tf = tf; saveReq(); ctlMark();
+          if (note) { note.textContent = (D && tf === D.tf ? tf + " is already active. " : "Requested " + tf + ": ") + "Set tf to 15m, 1h or 4h and commit; the bot switches within ~1 min."; note.setAttribute("role", "status"); note.setAttribute("aria-live", "polite"); }
+          window.open(EDIT + "control/tf.json", "_blank", "noopener");
+        } else if (kind === "filter") {
+          const on = btn.dataset.filter === "on";
+          REQ.filter = on; saveReq(); ctlMark();
+          if (note) { note.textContent = "Requested filter " + (on ? "ON" : "OFF") + ": set entry_filter_2pct to " + on + " and commit; the bot picks it up within ~1 min. Existing positions and exits are unchanged."; note.setAttribute("role", "status"); note.setAttribute("aria-live", "polite"); }
+          window.open(EDIT + "control/filters.json", "_blank", "noopener");
+        } else {
+          const sides = btn.dataset.sides;
+          REQ.sides = sides; saveReq(); ctlMark();
+          if (note) { note.textContent = "Requested " + (sides === "ls" ? "Long+Short" : "Long-only") + ': set sides to "' + sides + '" and commit; the bot picks it up within ~1 min. Switching to Long-only closes open shorts immediately.'; note.setAttribute("role", "status"); note.setAttribute("aria-live", "polite"); }
+          window.open(EDIT + "control/sides.json", "_blank", "noopener");
+        }
+      };
+    });
+  }
+  bindCtl("#rbTfSeg button", "rbTfNote", "tf");
+  bindCtl("#rbFltSeg button", "rbFltNote", "filter");
+  bindCtl("#rbSidesSeg button", "rbSidesNote", "sides");
+
   return { load, show() { if (!D || Date.now() - lastFetch > 30000) load(); else { prices(); setTimeout(() => { eqC && eqC.timeScale().fitContent(); }, 0); } } };
 })();
 </script>
@@ -1290,21 +1380,7 @@ $("autoIn").checked = !!S.auto;
 $("autoIn").onchange = () => { S.auto = $("autoIn").checked; save(); };
 S.auto = true; save();   // auto-refresh is always on at page load
 
-// Real Bot TF selector: the page is static and holds no tokens, so a tap opens control/tf.json in GitHub's editor.
-// Commit {"tf":"1h",...} there; the box polls that file every ~60 s and switches the paper bot live.
-const TF_EDIT_URL = "https://github.com/dedkovic441-hub/ssl-hybrid-dashboard/edit/main/control/tf.json";
-document.querySelectorAll("#rbTfSeg button").forEach(btn => {
-  btn.onclick = () => {
-    const tf = btn.dataset.tf;
-    if (!["15m", "1h", "4h"].includes(tf)) return;
-    const note = document.getElementById("rbTfNote");
-    if (note) {
-      note.textContent = (btn.classList.contains("on") ? tf + " is already active. " : "Requested " + tf + ": ") + "Set tf to 15m, 1h or 4h and commit; the bot switches within ~1 min.";
-      note.setAttribute("role", "status"); note.setAttribute("aria-live", "polite");
-    }
-    window.open(TF_EDIT_URL, "_blank", "noopener");
-  };
-});
+// Real Bot TF / filter / sides selectors are bound inside window.RB (GitHub editor, no token).
 
 selectCoin(S.coin); setTab(S.tab, false); markStale();
 RB.show();   // first load: Real Bot only
