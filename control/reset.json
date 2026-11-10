@@ -1,0 +1,5 @@
+{
+  "capital": null,
+  "requested_at": "init-not-a-reset",
+  "note": "Set capital to a number from 1 to 1000000 and update requested_at to request a paper reset. The first version of this file is recorded and ignored so it cannot trigger a reset."
+}

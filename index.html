@@ -185,6 +185,12 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
 .cc.mini{padding:7px 9px;border-radius:10px}.cc.mini .n{font-size:14px}.cc.mini .m{margin-top:2px;font-variant-numeric:tabular-nums}.cc.mini .t.m{display:flex}
 .cc.exl{opacity:.55}.szp.sig{background:#1e3a8a;color:#bfdbfe}
 .rs.ARROW_INTRABAR{background:rgba(0,195,255,.18);color:#7dd3fc}.rs.ARROW_CLOSE{background:rgba(138,147,166,.18)}
+
+.rb-reset{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
+.rb-reset label{font-size:12px;color:#fca5a5;text-transform:uppercase;letter-spacing:.05em;font-weight:700;flex:1 1 100%}
+.rb-reset input{font:inherit;font-weight:700;font-size:16px;width:120px;min-height:40px;padding:0 10px;border-radius:10px;border:1px solid #7f1d1d;background:#0f172a;color:#fecaca}
+.rb-reset button{min-height:40px;padding:0 16px;font-weight:700;background:#7f1d1d;border:1px solid #ef4444;color:#fecaca;border-radius:10px;cursor:pointer}
+.rb-reset button.req{animation:blink 1s infinite}
 </style>
 </head>
 <body class="onBot">
@@ -226,6 +232,12 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
           <button type="button" data-sides="ls">Long+Short</button>
         </div>
         <div class="meta" id="rbSidesNote">Long+Short (1x paper): an up arrow closes a short and opens a long; a down arrow closes a long and opens a short. Switching to Long-only closes open shorts immediately. Tap to change mode; it should confirm within about a minute — no GitHub login needed.</div>
+        <div class="rb-reset">
+          <label for="rbResetCap">Reset paper bot · starting balance (USD)</label>
+          <input id="rbResetCap" type="number" min="1" max="1000000" step="1" value="500" inputmode="decimal">
+          <button type="button" id="rbResetBtn">Reset</button>
+        </div>
+        <div class="meta" id="rbResetNote">Archives the current paper run and starts a new one with this starting balance. Open positions are not carried over. Confirm before it is sent — it should confirm within about a minute, no GitHub login needed.</div>
       </div>
       <div id="rbErr" class="err"></div>
     </div>
@@ -721,6 +733,7 @@ window.RB = (function () {
       return `<div class="skp">${esc((k.wib || "").slice(5))} · <b>${esc(k.coin)}</b> ${want} ${esc(k.tf || "")} skipped: ${esc(k.reason)}${ret} (${esc((k.held || []).join("+"))} held, strength ${num(k.strength) ? k.strength.toFixed(2) : "–"})</div>`; }).join("") || `<div class="meta">None yet (${P.n_skipped || 0}).</div>`;
   }
   function rules() {
+    if (typeof fillResetCap === "function") fillResetCap();
     const r = D.rules || {};
     const sw = [...(D.mode_switches || []).map(s => `${s.at} mode ${s.from}→${s.to}`), ...(D.tf_switches || []).map(s => `${s.at} timeframe ${s.from}→${s.to}`)].sort();
     $("rbRules").innerHTML = `<b>Rules:</b> ${esc(D.mode_text || D.mode)}. Entry: ${esc(r.entry || "–")}. Exit: ${esc(r.exit || "–")}. Fill: ${esc(r.fill || "–")}. Fee ${num(r.fee) ? (r.fee * 100).toFixed(2) + "%" : "–"} per side. Capital ${usd(D.capital)} ${D.pool ? `traded as one pool (max ${D.pool.max_positions} positions, size = equity ÷ max positions capped at cash, TP +$${D.pool.tp_usd} / SL −$${D.pool.sl_usd} net per position) since ${esc((D.pool.since_wib || "").slice(0, 16))} WIB; before that split $100 per coin over` : "split over"} ZEC, NEAR, PEPE, SOL, XRP since ${esc(D.start_wib)} WIB${D.epoch_from_wib ? `; since ${esc(D.epoch_from_wib.slice(0, 16))} WIB the low-cap universe (${(D.universe || []).length} Binance USDT coins, CoinGecko top-${D.exclude_top_mcap || 50} by market cap excluded, re-checked daily): ${(D.universe || []).map(c => esc(c) + (D.universe_ranks && D.universe_ranks[c] ? " #" + D.universe_ranks[c].rank : "")).join(", ")}` : ""}. ${D.signal_timing === "intrabar" ? "Signals intrabar: every ~5 s the Exit SSL is recomputed on the forming candle with the live price as its close; an up arrow buys at once at the live price (ARROW_INTRABAR), a down arrow on a held coin sells at once; max one entry and one exit per coin per candle, no re-entry in the candle of an exit; an arrow that disappears before the close does not undo the fill." : ""} Bot prices: Bot prices: ${esc(D.source || "Binance")}.` +
@@ -737,7 +750,7 @@ window.RB = (function () {
 
   const EDIT = "https://github.com/dedkovic441-hub/ssl-hybrid-dashboard/edit/main/";
   const RELAY = "https://ntfy.sh/shc_cfd1e904e1a9b9a1d7eadfde8c76645f52e80ae49443cb51e06b8eb2d486";
-  let REQ = { tf: null, filter: null, sides: null }, APPLIED = {};
+  let REQ = { tf: null, filter: null, sides: null, reset: null }, APPLIED = {};
   try { REQ = Object.assign(REQ, JSON.parse(sessionStorage.getItem("sslHybrid.ctlPending") || "{}")); } catch (e) {}
   function saveReq() { try { sessionStorage.setItem("sslHybrid.ctlPending", JSON.stringify(REQ)); } catch (e) {} }
   function curTf() { return APPLIED.tf || (D && D.tf); }
@@ -754,6 +767,8 @@ window.RB = (function () {
     if (REQ.tf && REQ.tf === tf) REQ.tf = null;
     if (REQ.filter != null && !!REQ.filter === curF) REQ.filter = null;
     if (REQ.sides && REQ.sides === curS) REQ.sides = null;
+    if (REQ.reset != null && APPLIED.reset != null && Number(REQ.reset) === Number(APPLIED.reset)) REQ.reset = null;
+    const rbtn = $("rbResetBtn"); if (rbtn) rbtn.className = REQ.reset != null ? "req" : "";
     saveReq();
     document.querySelectorAll("#rbTfSeg button").forEach(b => { b.className = (b.dataset.tf === tf) ? "on" : (b.dataset.tf === REQ.tf ? "req" : ""); });
     document.querySelectorAll("#rbFltSeg button").forEach(b => {
@@ -781,11 +796,22 @@ window.RB = (function () {
             if (p.of === "tf") APPLIED.tf = p.value;
             if (p.of === "filter") APPLIED.filter = !!p.value;
             if (p.of === "sides") APPLIED.sides = p.value;
+            if (p.of === "reset") {
+              APPLIED.reset = p.value;
+              const note = $("rbResetNote");
+              if (note) note.textContent = "Reset to $" + Number(p.value).toFixed(2) + " requested. The paper book starts fresh; public numbers update on the next dashboard refresh (up to 10 minutes).";
+            }
+            ctlMark();
+          }
+          if (p && p.cmd === "nack" && p.of === "reset") {
+            REQ.reset = null; saveReq();
+            const note = $("rbResetNote");
+            if (note) note.textContent = "Reset rejected: starting balance " + p.value + " is invalid (need $1 to $1,000,000).";
             ctlMark();
           }
         }
       } catch (e) {}
-      if (!(REQ.tf || REQ.filter != null || REQ.sides)) { watchT = null; return; }
+      if (!(REQ.tf || REQ.filter != null || REQ.sides || REQ.reset != null)) { watchT = null; return; }
       watchT = setTimeout(tick, 8000);
     };
     tick();
@@ -828,6 +854,33 @@ window.RB = (function () {
   bindCtl("#rbTfSeg button", "rbTfNote", "tf");
   bindCtl("#rbFltSeg button", "rbFltNote", "filter");
   bindCtl("#rbSidesSeg button", "rbSidesNote", "sides");
+
+  function validCap(v) {
+    const x = parseFloat(String(v == null ? "" : v).replace(/[$,\s]/g, ""));
+    return (isFinite(x) && x >= 1 && x <= 1000000) ? Math.round(x * 100) / 100 : null;
+  }
+  function fillResetCap() {
+    const el = $("rbResetCap"); if (!el || el.dataset.touched) return;
+    if (D && isFinite(D.capital) && D.capital > 0) el.value = D.capital;
+  }
+  const capEl = $("rbResetCap");
+  if (capEl && !capEl.dataset.bound) {
+    capEl.dataset.bound = "1";
+    capEl.addEventListener("input", () => { capEl.dataset.touched = "1"; });
+  }
+  const rbtn = $("rbResetBtn");
+  if (rbtn && !rbtn.dataset.bound) {
+    rbtn.dataset.bound = "1";
+    rbtn.onclick = () => {
+      const note = $("rbResetNote");
+      const cap = validCap(capEl && capEl.value);
+      if (cap == null) { if (note) note.textContent = "Enter a starting balance from $1 to $1,000,000 (values like −5 are rejected)."; return; }
+      if (!confirm("Reset the paper bot to $" + cap.toFixed(2) + "? This archives the current paper run and starts a fresh book. Open positions are not carried over.")) return;
+      REQ.reset = cap; saveReq(); ctlMark();
+      sendCmd("reset", cap, note, "Requested a reset to $" + cap.toFixed(2) + ". The bot should start the new paper book within about a minute — no GitHub login needed. Open positions are not carried over. Public numbers update on the next dashboard refresh (up to 10 minutes).", "control/reset.json");
+    };
+  }
+  fillResetCap();
 
   return { load, show() { if (!D || Date.now() - lastFetch > 30000) load(); else { prices(); setTimeout(() => { eqC && eqC.timeScale().fitContent(); }, 0); } } };
 })();
