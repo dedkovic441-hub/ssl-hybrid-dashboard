@@ -215,17 +215,17 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
           <button type="button" data-tf="1h">1h</button>
           <button type="button" data-tf="4h">4h</button>
         </div>
-        <div class="meta" id="rbTfNote">Highlighted = the bot's active timeframe. Tap to change it on GitHub: set tf to 15m, 1h or 4h and commit; the bot switches within ~1 min.</div>
+        <div class="meta" id="rbTfNote">Highlighted = the bot's active timeframe. Tap a button to switch (15m, 1h or 4h). It should confirm within about a minute — no GitHub login or commit needed.</div>
         <div class="rb-tf" id="rbFltSeg">
           <button type="button" data-filter="off">Filter OFF</button>
           <button type="button" data-filter="on">Filter ON +2%/24h</button>
         </div>
-        <div class="meta" id="rbFltNote">Entry filter: when ON, a new long needs the coin up at least +2% over the last 24 hours (15m candles); a new short needs it down at least −2%. Tap to edit control/filters.json on GitHub and commit; the bot picks it up within ~1 min. Existing positions and exits are unchanged.</div>
+        <div class="meta" id="rbFltNote">Entry filter: when ON, a new long needs the coin up at least +2% over the last 24 hours (15m candles); a new short needs it down at least −2%. Tap to turn it on or off; it should confirm within about a minute — no GitHub login needed. Existing positions and exits are unchanged.</div>
         <div class="rb-tf" id="rbSidesSeg">
           <button type="button" data-sides="long">Long-only</button>
           <button type="button" data-sides="ls">Long+Short</button>
         </div>
-        <div class="meta" id="rbSidesNote">Long+Short (1x paper): an up arrow closes a short and opens a long; a down arrow closes a long and opens a short. Switching to Long-only closes open shorts immediately. Tap to edit control/sides.json on GitHub and commit.</div>
+        <div class="meta" id="rbSidesNote">Long+Short (1x paper): an up arrow closes a short and opens a long; a down arrow closes a long and opens a short. Switching to Long-only closes open shorts immediately. Tap to change mode; it should confirm within about a minute — no GitHub login needed.</div>
       </div>
       <div id="rbErr" class="err"></div>
     </div>
@@ -734,18 +734,28 @@ window.RB = (function () {
   setInterval(() => { if (D && onBot() && !document.hidden) { const tb = TFMS[D.tf] || 9e5; if (Math.floor(Date.now() / tb) !== Math.floor(pendT / tb) && Date.now() % tb > 20000) arrows(); } }, 10000);   // new bar closed -> re-check arrows
   document.addEventListener("visibilitychange", () => { if (!document.hidden && onBot()) { prices(); if (Date.now() - lastFetch > 30000) load(); } });
 
+
   const EDIT = "https://github.com/dedkovic441-hub/ssl-hybrid-dashboard/edit/main/";
-  let REQ = { tf: null, filter: null, sides: null };
+  const RELAY = "https://ntfy.sh/shc_cfd1e904e1a9b9a1d7eadfde8c76645f52e80ae49443cb51e06b8eb2d486";
+  let REQ = { tf: null, filter: null, sides: null }, APPLIED = {};
   try { REQ = Object.assign(REQ, JSON.parse(sessionStorage.getItem("sslHybrid.ctlPending") || "{}")); } catch (e) {}
   function saveReq() { try { sessionStorage.setItem("sslHybrid.ctlPending", JSON.stringify(REQ)); } catch (e) {} }
+  function curTf() { return APPLIED.tf || (D && D.tf); }
+  function curFilter() { return ("filter" in APPLIED) ? !!APPLIED.filter : !!(D && D.entry_filter_2pct); }
+  function curSides() { return APPLIED.sides || ((D && D.sides === "long") ? "long" : "ls"); }
   function ctlMark() {
-    if (!D) return;
-    const curF = !!D.entry_filter_2pct, curS = (D.sides === "long") ? "long" : "ls";
-    if (REQ.tf && REQ.tf === D.tf) REQ.tf = null;
+    if (D) {
+      if (APPLIED.tf && APPLIED.tf === D.tf) delete APPLIED.tf;
+      if ("filter" in APPLIED && !!APPLIED.filter === !!D.entry_filter_2pct) delete APPLIED.filter;
+      if (APPLIED.sides && APPLIED.sides === ((D.sides === "long") ? "long" : "ls")) delete APPLIED.sides;
+    }
+    if (!D && !("tf" in APPLIED) && !("filter" in APPLIED) && !("sides" in APPLIED)) return;
+    const tf = curTf(), curF = curFilter(), curS = curSides();
+    if (REQ.tf && REQ.tf === tf) REQ.tf = null;
     if (REQ.filter != null && !!REQ.filter === curF) REQ.filter = null;
     if (REQ.sides && REQ.sides === curS) REQ.sides = null;
     saveReq();
-    document.querySelectorAll("#rbTfSeg button").forEach(b => { b.className = (b.dataset.tf === D.tf) ? "on" : (b.dataset.tf === REQ.tf ? "req" : ""); });
+    document.querySelectorAll("#rbTfSeg button").forEach(b => { b.className = (b.dataset.tf === tf) ? "on" : (b.dataset.tf === REQ.tf ? "req" : ""); });
     document.querySelectorAll("#rbFltSeg button").forEach(b => {
       const on = b.dataset.filter === "on";
       b.className = (on === curF) ? "on" : (REQ.filter != null && on === !!REQ.filter ? "req" : "");
@@ -754,25 +764,63 @@ window.RB = (function () {
       b.className = (b.dataset.sides === curS) ? "on" : (b.dataset.sides === REQ.sides ? "req" : "");
     });
   }
+  let watchT = null, lastSince = "10m";
+  async function watchRelay() {
+    if (watchT) return;
+    const tick = async () => {
+      try {
+        const r = await fetch(RELAY + "/json?poll=1&since=" + encodeURIComponent(lastSince), { cache: "no-store" });
+        const txt = await r.text();
+        for (const line of txt.split("\n")) {
+          if (!line.trim()) continue;
+          let ev; try { ev = JSON.parse(line); } catch (e) { continue; }
+          if (ev.id) lastSince = ev.id;
+          if (ev.event && ev.event !== "message") continue;
+          let p; try { p = JSON.parse(ev.message); } catch (e) { continue; }
+          if (p && p.cmd === "ack") {
+            if (p.of === "tf") APPLIED.tf = p.value;
+            if (p.of === "filter") APPLIED.filter = !!p.value;
+            if (p.of === "sides") APPLIED.sides = p.value;
+            ctlMark();
+          }
+        }
+      } catch (e) {}
+      if (!(REQ.tf || REQ.filter != null || REQ.sides)) { watchT = null; return; }
+      watchT = setTimeout(tick, 8000);
+    };
+    tick();
+  }
+  async function sendCmd(cmd, value, note, msg, file) {
+    if (note) { note.textContent = msg; note.setAttribute("role", "status"); note.setAttribute("aria-live", "polite"); }
+    const body = JSON.stringify({ cmd: cmd, value: value, at_ms: Date.now() });
+    try {
+      const r = await fetch(RELAY, { method: "POST", headers: { "Content-Type": "text/plain" }, body: body });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      watchRelay();
+    } catch (e) {
+      if (note) note.textContent = (msg || "") + " Relay send failed (" + e.message + "). Opening GitHub as a fallback — save/commit the file if you can.";
+      window.open(EDIT + file, "_blank", "noopener");
+    }
+  }
   function bindCtl(sel, noteId, kind) {
     document.querySelectorAll(sel).forEach(btn => {
       btn.onclick = () => {
         const note = $(noteId);
         if (kind === "tf") {
           const tf = btn.dataset.tf; if (!["15m", "1h", "4h"].includes(tf)) return;
+          if (tf === curTf() && !REQ.tf) { if (note) note.textContent = tf + " is already active."; return; }
           REQ.tf = tf; saveReq(); ctlMark();
-          if (note) { note.textContent = (D && tf === D.tf ? tf + " is already active. " : "Requested " + tf + ": ") + "Set tf to 15m, 1h or 4h and commit; the bot switches within ~1 min."; note.setAttribute("role", "status"); note.setAttribute("aria-live", "polite"); }
-          window.open(EDIT + "control/tf.json", "_blank", "noopener");
+          sendCmd("tf", tf, note, "Requested " + tf + ". The bot should switch within about a minute — no GitHub login needed.", "control/tf.json");
         } else if (kind === "filter") {
           const on = btn.dataset.filter === "on";
+          if (on === curFilter() && REQ.filter == null) { if (note) note.textContent = "Filter is already " + (on ? "ON" : "OFF") + "."; return; }
           REQ.filter = on; saveReq(); ctlMark();
-          if (note) { note.textContent = "Requested filter " + (on ? "ON" : "OFF") + ": set entry_filter_2pct to " + on + " and commit; the bot picks it up within ~1 min. Existing positions and exits are unchanged."; note.setAttribute("role", "status"); note.setAttribute("aria-live", "polite"); }
-          window.open(EDIT + "control/filters.json", "_blank", "noopener");
+          sendCmd("filter", on, note, "Requested filter " + (on ? "ON" : "OFF") + ". The bot should pick this up within about a minute — no GitHub login needed. Existing positions and exits are unchanged.", "control/filters.json");
         } else {
           const sides = btn.dataset.sides;
+          if (sides === curSides() && !REQ.sides) { if (note) note.textContent = (sides === "ls" ? "Long+Short" : "Long-only") + " is already on."; return; }
           REQ.sides = sides; saveReq(); ctlMark();
-          if (note) { note.textContent = "Requested " + (sides === "ls" ? "Long+Short" : "Long-only") + ': set sides to "' + sides + '" and commit; the bot picks it up within ~1 min. Switching to Long-only closes open shorts immediately.'; note.setAttribute("role", "status"); note.setAttribute("aria-live", "polite"); }
-          window.open(EDIT + "control/sides.json", "_blank", "noopener");
+          sendCmd("sides", sides, note, "Requested " + (sides === "ls" ? "Long+Short" : "Long-only") + ". The bot should pick this up within about a minute — no GitHub login needed. Switching to Long-only closes open shorts immediately.", "control/sides.json");
         }
       };
     });
