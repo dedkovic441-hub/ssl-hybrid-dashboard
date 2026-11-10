@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0e14">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>SSL Hybrid Live · Binance</title>
 <script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
 <style>
@@ -186,10 +189,10 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
 .cc.exl{opacity:.55}.szp.sig{background:#1e3a8a;color:#bfdbfe}
 .rs.ARROW_INTRABAR{background:rgba(0,195,255,.18);color:#7dd3fc}.rs.ARROW_CLOSE{background:rgba(138,147,166,.18)}
 
-.rb-reset{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
+.rb-reset{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px;position:relative;z-index:6;pointer-events:auto}
 .rb-reset label{font-size:12px;color:#fca5a5;text-transform:uppercase;letter-spacing:.05em;font-weight:700;flex:1 1 100%}
-.rb-reset input{font:inherit;font-weight:700;font-size:16px;width:120px;min-height:40px;padding:0 10px;border-radius:10px;border:1px solid #7f1d1d;background:#0f172a;color:#fecaca}
-.rb-reset button{min-height:40px;padding:0 16px;font-weight:700;background:#7f1d1d;border:1px solid #ef4444;color:#fecaca;border-radius:10px;cursor:pointer}
+.rb-reset input{font:inherit;font-weight:700;font-size:16px;flex:1 1 160px;width:160px;max-width:100%;min-height:44px;padding:0 12px;border-radius:10px;border:1px solid #ef4444;background:#0f172a;color:#fecaca;-webkit-user-select:text;user-select:text;touch-action:manipulation;pointer-events:auto}
+.rb-reset button{min-height:44px;min-width:96px;padding:0 18px;font-size:16px;font-weight:700;background:#7f1d1d;border:1px solid #ef4444;color:#fecaca;border-radius:10px;cursor:pointer;touch-action:manipulation;pointer-events:auto;-webkit-tap-highlight-color:rgba(239,68,68,.35)}
 .rb-reset button.req{animation:blink 1s infinite}
 </style>
 </head>
@@ -221,23 +224,23 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
           <button type="button" data-tf="1h">1h</button>
           <button type="button" data-tf="4h">4h</button>
         </div>
-        <div class="meta" id="rbTfNote">Highlighted = the bot's active timeframe. Tap a button to switch (15m, 1h or 4h). It should confirm within about a minute — no GitHub login or commit needed.</div>
+        <div class="meta" id="rbTfNote">Highlighted = the bot's active timeframe. Tap a button to switch (15m, 1h or 4h). It should confirm within a few seconds — no GitHub login or commit needed.</div>
         <div class="rb-tf" id="rbFltSeg">
           <button type="button" data-filter="off">Filter OFF</button>
           <button type="button" data-filter="on">Filter ON +2%/24h</button>
         </div>
-        <div class="meta" id="rbFltNote">Entry filter: when ON, a new long needs the coin up at least +2% over the last 24 hours (15m candles); a new short needs it down at least −2%. Tap to turn it on or off; it should confirm within about a minute — no GitHub login needed. Existing positions and exits are unchanged.</div>
+        <div class="meta" id="rbFltNote">Entry filter: when ON, a new long needs the coin up at least +2% over the last 24 hours (15m candles); a new short needs it down at least −2%. Tap to turn it on or off; it should confirm within a few seconds — no GitHub login needed. Existing positions and exits are unchanged.</div>
         <div class="rb-tf" id="rbSidesSeg">
           <button type="button" data-sides="long">Long-only</button>
           <button type="button" data-sides="ls">Long+Short</button>
         </div>
-        <div class="meta" id="rbSidesNote">Long+Short (1x paper): an up arrow closes a short and opens a long; a down arrow closes a long and opens a short. Switching to Long-only closes open shorts immediately. Tap to change mode; it should confirm within about a minute — no GitHub login needed.</div>
+        <div class="meta" id="rbSidesNote">Long+Short (1x paper): an up arrow closes a short and opens a long; a down arrow closes a long and opens a short. Switching to Long-only closes open shorts immediately. Tap to change mode; it should confirm within a few seconds — no GitHub login needed.</div>
         <div class="rb-reset">
           <label for="rbResetCap">Reset paper bot · starting balance (USD)</label>
-          <input id="rbResetCap" type="number" min="1" max="1000000" step="1" value="500" inputmode="decimal">
+          <input id="rbResetCap" type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" placeholder="e.g. 1000" value="500">
           <button type="button" id="rbResetBtn">Reset</button>
         </div>
-        <div class="meta" id="rbResetNote">Archives the current paper run and starts a new one with this starting balance. Open positions are not carried over. Confirm before it is sent — it should confirm within about a minute, no GitHub login needed.</div>
+        <div class="meta" id="rbResetNote">Archives the current paper run and starts a new one with this starting balance. Open positions are not carried over. Type the starting balance here, then tap Reset and confirm. It should confirm within a few seconds — no GitHub login needed.</div>
       </div>
       <div id="rbErr" class="err"></div>
     </div>
@@ -395,7 +398,7 @@ if (typeof module !== "undefined") module.exports = { indicator, backtest, metri
 
 <script>
 /* ---- "Real bot" tab ----
-   ./bot.json = the 24/7 paper bot's state, pushed from the box every 10 min (re-fetched here every 60 s).
+   ./bot.json = the 24/7 paper bot's state, pushed from the box every 10 min (re-fetched here every 60 s, cache-busted). Control changes confirm via the ntfy live stream in a few seconds and are not overwritten by a stale export.
    Between exports the page marks the bot's exported positions to live Binance prices every 5 s using the bot's own
    formula (paper_bot.marked): value = units*price (long) else value_close; unreal = value - cost; bh = alloc*price/bh_c0.
    It also recomputes the Exit Arrows on bars that closed after the export (same Pine v6 indicator() as the simulation)
@@ -417,6 +420,22 @@ window.RB = (function () {
   const T = ms => Math.floor(ms / 1000) + 7 * 3600;   // charts render UTC; shift so the axis reads WIB
   const prec = p => !num(p) ? 2 : p < 0.001 ? 10 : p < 1 ? 5 : p < 100 ? 3 : 2;
   const onBot = () => true;   // this page is Real Bot only
+  function bustUrl(u) { return u + (u.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now() + "&r=" + Math.random().toString(36).slice(2); }
+  function bustFetch(u, opt) {
+    return fetch(bustUrl(u), Object.assign({ cache: "no-store", headers: { "Cache-Control": "no-cache", Pragma: "no-cache" } }, opt || {}));
+  }
+  let LIVE_CTL = null;
+  try { LIVE_CTL = JSON.parse(sessionStorage.getItem("sslHybrid.liveCtl") || "null"); } catch (e) { LIVE_CTL = null; }
+  function saveLive() { try { sessionStorage.setItem("sslHybrid.liveCtl", JSON.stringify(LIVE_CTL || {})); } catch (e) {} }
+  function exportMs() { return (D && D.exported_ms) || 0; }
+  function liveFresh() { return !!(LIVE_CTL && (LIVE_CTL.applied_at_ms || 0) >= exportMs()); }
+  function curTf() { return (liveFresh() && LIVE_CTL.tf) || (typeof APPLIED !== "undefined" && APPLIED.tf) || (D && D.tf); }
+  function curFilter() { return (liveFresh() && "filter" in LIVE_CTL) ? !!LIVE_CTL.filter : (("filter" in (typeof APPLIED !== "undefined" ? APPLIED : {})) ? !!APPLIED.filter : !!(D && D.entry_filter_2pct)); }
+  function curSides() { return (liveFresh() && LIVE_CTL.sides) || (typeof APPLIED !== "undefined" && APPLIED.sides) || ((D && D.sides === "long") ? "long" : "ls"); }
+  function resetCapBusy() {
+    const el = $("rbResetCap");
+    return !!(el && (document.activeElement === el || el.dataset.focused === "1"));
+  }
   let D = null, V = null, coin = localStorage.getItem("rbCoin") || null, fCoin = "ALL", fRes = "all", eqC, eqS, bhS, pxC, pxS = {}, lastFetch = 0, loading = false;
   let LP = {}, lpT = 0, lpSrc = "", lpIdx = 0, lpBusy = false, lpErr = "", pend = {}, pendT = 0;
   const TOG = JSON.parse(localStorage.getItem("rbTogs") || '{"chan":true,"base":true,"exit":true,"ssl1":false,"ssl2":false,"arrows":true,"fills":true}');
@@ -426,11 +445,12 @@ window.RB = (function () {
   async function load() {
     if (loading) return; loading = true;
     try {
-      const r = await fetch("./bot.json?t=" + Date.now(), { cache: "no-store" });
+      const r = await bustFetch("./bot.json");
       if (!r.ok) throw new Error("HTTP " + r.status + " fetching bot.json");
       const nd = await r.json(), changed = !D || nd.exported_ms !== D.exported_ms;
       D = nd; lastFetch = Date.now(); $("rbErr").textContent = "";
-      if (changed) { V = view(); render(); arrows(); } else header();
+      if (resetCapBusy()) { if (typeof ctlMark === "function") ctlMark(); }
+      else if (changed) { V = view(); render(); arrows(); } else header();
       if (!lpT) prices();
     } catch (e) {
       $("rbErr").textContent = "Could not load the bot's data (" + e.message + "). Showing the last loaded copy" + (D ? "." : ": none yet.");
@@ -501,7 +521,11 @@ window.RB = (function () {
         } catch (e) { lpErr = PX_SRC[i][0] + ": " + (e.name === "AbortError" ? "timeout" : e.message); }
         finally { clearTimeout(to); }
       }
-      if (ok) { V = view(); numbers(); cards(); positions(); poolCard(); cinfo(); equityLive(); livePriceLine(); const l = $("rbLive"); l.classList.remove("tick"); void l.offsetWidth; l.classList.add("tick"); }
+      if (ok) {
+        V = view();
+        if (!resetCapBusy()) { numbers(); cards(); positions(); poolCard(); cinfo(); equityLive(); livePriceLine(); }
+        const l = $("rbLive"); l.classList.remove("tick"); void l.offsetWidth; l.classList.add("tick");
+      }
       liveBadge();
     } finally { lpBusy = false; }
   }
@@ -544,18 +568,22 @@ window.RB = (function () {
 
   // ---------- render ----------
   function header() {
+    if (resetCapBusy()) { if (typeof ctlMark === "function") ctlMark(); return; }
     const st = (D.status || "STOPPED").toUpperCase(), ageMin = (Date.now() - D.exported_ms) / 60000, stale = ageMin > STALE_MIN;
+    const tf = curTf(), sides = curSides(), filt = curFilter();
+    const startW = (liveFresh() && LIVE_CTL && LIVE_CTL.start_wib) || D.start_wib;
+    const sidesTxt = sides === "long" ? "Long-only" : "Long+Short";
     $("rbPill").className = "pill " + (st === "RUNNING" ? "run" : st === "PAUSED" ? "pau" : "stp"); $("rbPillT").textContent = st;
     $("rbStalePill").classList.toggle("hide", !stale); $("rbStale").classList.toggle("hide", !stale);
     if (stale) $("rbStale").textContent = `STALE: the last export is ${ageMin >= 120 ? (ageMin / 60).toFixed(1) + " h" : Math.round(ageMin) + " min"} old (expected every 10 min). The box or its publisher may be offline, so the status and positions below may be out of date (prices are still live).`;
-    $("rbMode").innerHTML = `${esc(D.mode)} · <b>${esc(D.tf)}</b> · <span class="szp sig">${esc(D.sides_text || (D.sides === "long" ? "Long-only" : "Long+Short"))}</span> · <span class="szp sig">filter ${D.entry_filter_2pct ? "ON +2%/24h" : "OFF"}</span> · <span class="szp sig">${esc(D.signal_timing_text || "Signals: on candle close")}</span> · since ${esc(D.start_wib)} WIB` + (D.pool ? ` <span class="szp">Max positions ${D.pool.max_positions} · pool sizing · ${D.pool.slots_used}/${D.pool.max_positions}</span>` : "");
+    $("rbMode").innerHTML = `${esc(D.mode)} · <b>${esc(tf)}</b> · <span class="szp sig">${esc(sidesTxt)}</span> · <span class="szp sig">filter ${filt ? "ON +2%/24h" : "OFF"}</span> · <span class="szp sig">${esc(D.signal_timing_text || "Signals: on candle close")}</span> · since ${esc(startW)} WIB` + (D.pool ? ` <span class="szp">Max positions ${D.pool.max_positions} · pool sizing · ${D.pool.slots_used}/${D.pool.max_positions}</span>` : "");
     let det = st === "RUNNING" ? "Bot alive" + (num(D.hb_age_s) ? `, heartbeat ${Math.round(D.hb_age_s)} s before the export` : "") : (D.status_detail || "");
     if (D.paused) det = `Paused since ${D.paused.since_wib} WIB: ${D.paused.reason}. No new entries; exits still follow the rules.`;
     $("rbDetail").textContent = det + (D.heartbeat_wib ? ` (last heartbeat ${D.heartbeat_wib.slice(11, 19)} WIB)` : "");
     $("rbExp").textContent = wib(D.exported_ms); $("rbAgo").textContent = `(${ageMin < 1 ? "<1" : Math.round(ageMin)} min ago)`;
     document.querySelectorAll("#vBot .asof").forEach(e => e.textContent = WIBH.format(new Date(D.positions_as_of_ms || D.exported_ms)));
-    const tb = TFMS[D.tf] || 9e5, now = Date.now(), nx = Math.ceil((now + 1) / tb) * tb, s = Math.round((nx - now) / 1000);
-    $("rbTf").textContent = D.tf; $("rbCd").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; $("rbCdAt").textContent = "at " + WIBH.format(new Date(nx)) + " WIB";
+    const tb = TFMS[tf] || 9e5, now = Date.now(), nx = Math.ceil((now + 1) / tb) * tb, s = Math.round((nx - now) / 1000);
+    $("rbTf").textContent = tf; $("rbCd").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; $("rbCdAt").textContent = "at " + WIBH.format(new Date(nx)) + " WIB";
     if (onBot()) { $("upd").textContent = "Real bot · exported " + wib(D.exported_ms) + " WIB"; $("src").textContent = V && V.live ? "· live P&L" : ""; }
     liveBadge(); ctlMark();
   }
@@ -748,28 +776,46 @@ window.RB = (function () {
   document.addEventListener("visibilitychange", () => { if (!document.hidden && onBot()) { prices(); if (Date.now() - lastFetch > 30000) load(); } });
 
 
+
   const EDIT = "https://github.com/dedkovic441-hub/ssl-hybrid-dashboard/edit/main/";
   const RELAY = "https://ntfy.sh/shc_cfd1e904e1a9b9a1d7eadfde8c76645f52e80ae49443cb51e06b8eb2d486";
   let REQ = { tf: null, filter: null, sides: null, reset: null }, APPLIED = {};
   try { REQ = Object.assign(REQ, JSON.parse(sessionStorage.getItem("sslHybrid.ctlPending") || "{}")); } catch (e) {}
   function saveReq() { try { sessionStorage.setItem("sslHybrid.ctlPending", JSON.stringify(REQ)); } catch (e) {} }
-  function curTf() { return APPLIED.tf || (D && D.tf); }
-  function curFilter() { return ("filter" in APPLIED) ? !!APPLIED.filter : !!(D && D.entry_filter_2pct); }
-  function curSides() { return APPLIED.sides || ((D && D.sides === "long") ? "long" : "ls"); }
+  function applyStatus(p) {
+    if (!p || typeof p !== "object") return;
+    LIVE_CTL = {
+      tf: p.tf || LIVE_CTL && LIVE_CTL.tf,
+      filter: ("filter" in p) ? !!p.filter : (LIVE_CTL && LIVE_CTL.filter),
+      sides: p.sides || (LIVE_CTL && LIVE_CTL.sides),
+      capital: (p.capital != null ? p.capital : (LIVE_CTL && LIVE_CTL.capital)),
+      start_wib: p.start_wib || (LIVE_CTL && LIVE_CTL.start_wib),
+      start_ms: p.start_ms || (LIVE_CTL && LIVE_CTL.start_ms),
+      applied_at_ms: p.applied_at_ms || p.at_ms || Date.now()
+    };
+    saveLive();
+    if (p.of === "tf" || p.tf) APPLIED.tf = p.tf || p.value;
+    if (p.of === "filter" || "filter" in p) APPLIED.filter = ("filter" in p) ? !!p.filter : !!p.value;
+    if (p.of === "sides" || p.sides) APPLIED.sides = p.sides || p.value;
+    if (p.of === "reset" || p.capital != null) APPLIED.reset = p.capital != null ? p.capital : p.value;
+    ctlMark();
+    if (D && !resetCapBusy()) header();
+  }
   function ctlMark() {
     if (D) {
-      if (APPLIED.tf && APPLIED.tf === D.tf) delete APPLIED.tf;
-      if ("filter" in APPLIED && !!APPLIED.filter === !!D.entry_filter_2pct) delete APPLIED.filter;
-      if (APPLIED.sides && APPLIED.sides === ((D.sides === "long") ? "long" : "ls")) delete APPLIED.sides;
+      // Only drop in-memory applied flags once the exported bot.json has caught up.
+      // Never compare against curTf() itself (that would fall back to a stale export).
+      if (APPLIED.tf && APPLIED.tf === D.tf && exportMs() >= (LIVE_CTL && LIVE_CTL.applied_at_ms || 0)) delete APPLIED.tf;
+      if ("filter" in APPLIED && !!APPLIED.filter === !!D.entry_filter_2pct && exportMs() >= (LIVE_CTL && LIVE_CTL.applied_at_ms || 0)) delete APPLIED.filter;
+      if (APPLIED.sides && APPLIED.sides === ((D.sides === "long") ? "long" : "ls") && exportMs() >= (LIVE_CTL && LIVE_CTL.applied_at_ms || 0)) delete APPLIED.sides;
     }
-    if (!D && !("tf" in APPLIED) && !("filter" in APPLIED) && !("sides" in APPLIED)) return;
-    const tf = curTf(), curF = curFilter(), curS = curSides();
-    if (REQ.tf && REQ.tf === tf) REQ.tf = null;
-    if (REQ.filter != null && !!REQ.filter === curF) REQ.filter = null;
-    if (REQ.sides && REQ.sides === curS) REQ.sides = null;
-    if (REQ.reset != null && APPLIED.reset != null && Number(REQ.reset) === Number(APPLIED.reset)) REQ.reset = null;
+    if (REQ.tf && REQ.tf === curTf()) REQ.tf = null;
+    if (REQ.filter != null && !!REQ.filter === curFilter()) REQ.filter = null;
+    if (REQ.sides && REQ.sides === curSides()) REQ.sides = null;
+    if (REQ.reset != null && LIVE_CTL && LIVE_CTL.capital != null && Number(REQ.reset) === Number(LIVE_CTL.capital) && (LIVE_CTL.applied_at_ms || 0) >= (REQ.resetAt || 0)) REQ.reset = null;
     const rbtn = $("rbResetBtn"); if (rbtn) rbtn.className = REQ.reset != null ? "req" : "";
     saveReq();
+    const tf = curTf(), curF = curFilter(), curS = curSides();
     document.querySelectorAll("#rbTfSeg button").forEach(b => { b.className = (b.dataset.tf === tf) ? "on" : (b.dataset.tf === REQ.tf ? "req" : ""); });
     document.querySelectorAll("#rbFltSeg button").forEach(b => {
       const on = b.dataset.filter === "on";
@@ -779,50 +825,77 @@ window.RB = (function () {
       b.className = (b.dataset.sides === curS) ? "on" : (b.dataset.sides === REQ.sides ? "req" : "");
     });
   }
-  let watchT = null, lastSince = "10m";
-  async function watchRelay() {
-    if (watchT) return;
-    const tick = async () => {
-      try {
-        const r = await fetch(RELAY + "/json?poll=1&since=" + encodeURIComponent(lastSince), { cache: "no-store" });
-        const txt = await r.text();
-        for (const line of txt.split("\n")) {
-          if (!line.trim()) continue;
-          let ev; try { ev = JSON.parse(line); } catch (e) { continue; }
-          if (ev.id) lastSince = ev.id;
-          if (ev.event && ev.event !== "message") continue;
-          let p; try { p = JSON.parse(ev.message); } catch (e) { continue; }
-          if (p && p.cmd === "ack") {
-            if (p.of === "tf") APPLIED.tf = p.value;
-            if (p.of === "filter") APPLIED.filter = !!p.value;
-            if (p.of === "sides") APPLIED.sides = p.value;
-            if (p.of === "reset") {
-              APPLIED.reset = p.value;
-              const note = $("rbResetNote");
-              if (note) note.textContent = "Reset to $" + Number(p.value).toFixed(2) + " requested. The paper book starts fresh; public numbers update on the next dashboard refresh (up to 10 minutes).";
-            }
-            ctlMark();
-          }
-          if (p && p.cmd === "nack" && p.of === "reset") {
-            REQ.reset = null; saveReq();
-            const note = $("rbResetNote");
-            if (note) note.textContent = "Reset rejected: starting balance " + p.value + " is invalid (need $1 to $1,000,000).";
-            ctlMark();
-          }
-        }
-      } catch (e) {}
-      if (!(REQ.tf || REQ.filter != null || REQ.sides || REQ.reset != null)) { watchT = null; return; }
-      watchT = setTimeout(tick, 8000);
-    };
-    tick();
+  let es = null, lastSince = "10m", esRetry = 0;
+  function handleRelayPayload(p) {
+    if (!p || typeof p !== "object") return;
+    if (p.cmd === "status") {
+      applyStatus(p);
+      const note = p.of === "reset" ? $("rbResetNote") : (p.of === "tf" ? $("rbTfNote") : (p.of === "filter" ? $("rbFltNote") : (p.of === "sides" ? $("rbSidesNote") : null)));
+      if (note) {
+        if (p.of === "reset") note.textContent = "Reset to $" + Number(p.capital != null ? p.capital : p.value).toFixed(2) + " confirmed. The paper book has started fresh; the exported numbers update on the next dashboard refresh (up to 10 minutes).";
+        else if (p.of === "tf") note.textContent = (p.tf || p.value) + " is now active.";
+        else if (p.of === "filter") note.textContent = "Filter is now " + ((("filter" in p) ? p.filter : p.value) ? "ON" : "OFF") + ".";
+        else if (p.of === "sides") note.textContent = ((p.sides || p.value) === "ls" ? "Long+Short" : "Long-only") + " is now on.";
+        else note.textContent = "Settings confirmed.";
+      }
+      return;
+    }
+    if (p.cmd === "ack") {
+      if (p.of === "tf") APPLIED.tf = p.value;
+      if (p.of === "filter") APPLIED.filter = !!p.value;
+      if (p.of === "sides") APPLIED.sides = p.value;
+      if (p.of === "reset") APPLIED.reset = p.value;
+      ctlMark();
+      const note = p.of === "reset" ? $("rbResetNote") : (p.of === "tf" ? $("rbTfNote") : (p.of === "filter" ? $("rbFltNote") : (p.of === "sides" ? $("rbSidesNote") : null)));
+      if (note && !String(note.textContent || "").includes("confirmed") && !String(note.textContent || "").includes("is now")) {
+        note.textContent = "Received — waiting for the bot to apply…";
+      }
+      return;
+    }
+    if (p.cmd === "nack" && p.of === "reset") {
+      REQ.reset = null; saveReq();
+      const note = $("rbResetNote");
+      if (note) note.textContent = "Reset rejected: starting balance " + p.value + " is invalid (need $1 to $1,000,000).";
+      ctlMark();
+    }
   }
+  function bindRelayStream() {
+    if (es || !RELAY) return;
+    try {
+      es = new EventSource(RELAY + "/sse?since=" + encodeURIComponent(lastSince));
+    } catch (e) { es = null; scheduleEsRetry(); return; }
+    es.onmessage = ev => {
+      esRetry = 0;
+      try {
+        const obj = JSON.parse(ev.data);
+        if (obj && obj.id) lastSince = obj.id;
+        let p = obj;
+        if (obj && typeof obj.message === "string") { try { p = JSON.parse(obj.message); } catch (e2) { p = null; } }
+        else if (obj && obj.message && typeof obj.message === "object") p = obj.message;
+        handleRelayPayload(p);
+      } catch (e) {}
+    };
+    es.onerror = () => {
+      try { es.close(); } catch (e) {}
+      es = null;
+      scheduleEsRetry();
+    };
+  }
+  function scheduleEsRetry() {
+    if (es) return;
+    esRetry = Math.min((esRetry || 0) + 1, 8);
+    setTimeout(bindRelayStream, Math.min(8000, 500 * esRetry));
+  }
+  bindRelayStream();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) bindRelayStream(); });
+
   async function sendCmd(cmd, value, note, msg, file) {
     if (note) { note.textContent = msg; note.setAttribute("role", "status"); note.setAttribute("aria-live", "polite"); }
     const body = JSON.stringify({ cmd: cmd, value: value, at_ms: Date.now() });
     try {
       const r = await fetch(RELAY, { method: "POST", headers: { "Content-Type": "text/plain" }, body: body });
       if (!r.ok) throw new Error("HTTP " + r.status);
-      watchRelay();
+      bindRelayStream();
     } catch (e) {
       if (note) note.textContent = (msg || "") + " Relay send failed (" + e.message + "). Opening GitHub as a fallback — save/commit the file if you can.";
       window.open(EDIT + file, "_blank", "noopener");
@@ -836,17 +909,17 @@ window.RB = (function () {
           const tf = btn.dataset.tf; if (!["15m", "1h", "4h"].includes(tf)) return;
           if (tf === curTf() && !REQ.tf) { if (note) note.textContent = tf + " is already active."; return; }
           REQ.tf = tf; saveReq(); ctlMark();
-          sendCmd("tf", tf, note, "Requested " + tf + ". The bot should switch within about a minute — no GitHub login needed.", "control/tf.json");
+          sendCmd("tf", tf, note, "Requested " + tf + ". The bot should switch within a few seconds — no GitHub login needed.", "control/tf.json");
         } else if (kind === "filter") {
           const on = btn.dataset.filter === "on";
           if (on === curFilter() && REQ.filter == null) { if (note) note.textContent = "Filter is already " + (on ? "ON" : "OFF") + "."; return; }
           REQ.filter = on; saveReq(); ctlMark();
-          sendCmd("filter", on, note, "Requested filter " + (on ? "ON" : "OFF") + ". The bot should pick this up within about a minute — no GitHub login needed. Existing positions and exits are unchanged.", "control/filters.json");
+          sendCmd("filter", on, note, "Requested filter " + (on ? "ON" : "OFF") + ". The bot should pick this up within a few seconds — no GitHub login needed. Existing positions and exits are unchanged.", "control/filters.json");
         } else {
           const sides = btn.dataset.sides;
           if (sides === curSides() && !REQ.sides) { if (note) note.textContent = (sides === "ls" ? "Long+Short" : "Long-only") + " is already on."; return; }
           REQ.sides = sides; saveReq(); ctlMark();
-          sendCmd("sides", sides, note, "Requested " + (sides === "ls" ? "Long+Short" : "Long-only") + ". The bot should pick this up within about a minute — no GitHub login needed. Switching to Long-only closes open shorts immediately.", "control/sides.json");
+          sendCmd("sides", sides, note, "Requested " + (sides === "ls" ? "Long+Short" : "Long-only") + ". The bot should pick this up within a few seconds — no GitHub login needed. Switching to Long-only closes open shorts immediately.", "control/sides.json");
         }
       };
     });
@@ -860,27 +933,44 @@ window.RB = (function () {
     return (isFinite(x) && x >= 1 && x <= 1000000) ? Math.round(x * 100) / 100 : null;
   }
   function fillResetCap() {
-    const el = $("rbResetCap"); if (!el || el.dataset.touched) return;
-    if (D && isFinite(D.capital) && D.capital > 0) el.value = D.capital;
+    const el = $("rbResetCap");
+    if (!el || el.dataset.touched || document.activeElement === el || el.dataset.focused === "1") return;
+    const cap = (liveFresh() && LIVE_CTL && isFinite(LIVE_CTL.capital) && LIVE_CTL.capital > 0) ? LIVE_CTL.capital : (D && isFinite(D.capital) ? D.capital : null);
+    if (cap > 0) el.value = String(cap);
   }
   const capEl = $("rbResetCap");
   if (capEl && !capEl.dataset.bound) {
     capEl.dataset.bound = "1";
-    capEl.addEventListener("input", () => { capEl.dataset.touched = "1"; });
+    const markTouched = () => { capEl.dataset.touched = "1"; capEl.dataset.focused = "1"; };
+    capEl.addEventListener("focus", () => { capEl.dataset.focused = "1"; });
+    capEl.addEventListener("blur", () => { setTimeout(() => { capEl.dataset.focused = ""; }, 300); });
+    ["input", "change", "keyup", "keydown", "paste"].forEach(ev => capEl.addEventListener(ev, markTouched));
+    ["click", "pointerdown", "touchstart", "mousedown"].forEach(ev => capEl.addEventListener(ev, e => { e.stopPropagation(); markTouched(); }, { passive: true }));
   }
   const rbtn = $("rbResetBtn");
   if (rbtn && !rbtn.dataset.bound) {
     rbtn.dataset.bound = "1";
+    ["click", "pointerdown", "touchstart"].forEach(ev => rbtn.addEventListener(ev, e => e.stopPropagation(), { passive: ev !== "click" }));
     rbtn.onclick = () => {
       const note = $("rbResetNote");
       const cap = validCap(capEl && capEl.value);
       if (cap == null) { if (note) note.textContent = "Enter a starting balance from $1 to $1,000,000 (values like −5 are rejected)."; return; }
+      if (REQ.reset != null && Number(REQ.reset) === cap) { if (note) note.textContent = "A reset to $" + cap.toFixed(2) + " is already in progress…"; return; }
       if (!confirm("Reset the paper bot to $" + cap.toFixed(2) + "? This archives the current paper run and starts a fresh book. Open positions are not carried over.")) return;
-      REQ.reset = cap; saveReq(); ctlMark();
-      sendCmd("reset", cap, note, "Requested a reset to $" + cap.toFixed(2) + ". The bot should start the new paper book within about a minute — no GitHub login needed. Open positions are not carried over. Public numbers update on the next dashboard refresh (up to 10 minutes).", "control/reset.json");
+      REQ.reset = cap; REQ.resetAt = Date.now(); saveReq(); ctlMark();
+      sendCmd("reset", cap, note, "Requested a reset to $" + cap.toFixed(2) + ". The bot should start the new paper book within a few seconds — no GitHub login needed. Open positions are not carried over. Public numbers update on the next dashboard refresh (up to 10 minutes).", "control/reset.json");
     };
   }
   fillResetCap();
+  ctlMark();
+  window.__rbTest = {
+    bump() { if (resetCapBusy()) return "busy"; if (!D) return "no-d"; D.exported_ms = Date.now(); V = view(); render(); header(); return "ok"; },
+    render() { if (D) { V = view(); render(); } },
+    header() { if (D) header(); },
+    value() { return ($("rbResetCap") || {}).value; },
+    focused() { return resetCapBusy(); }
+  };
+
 
   return { load, show() { if (!D || Date.now() - lastFetch > 30000) load(); else { prices(); setTimeout(() => { eqC && eqC.timeScale().fitContent(); }, 0); } } };
 })();
