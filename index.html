@@ -184,7 +184,7 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
 .rs.ARROW_INTRABAR{background:rgba(0,195,255,.18);color:#7dd3fc}.rs.ARROW_CLOSE{background:rgba(138,147,166,.18)}
 </style>
 </head>
-<body>
+<body class="onBot">
 <header>
   <div class="row"><h1>SSL Hybrid Live</h1><button id="refresh" aria-label="Refresh now">↻ Refresh</button></div>
   <div class="meta row" style="margin-top:4px"><span id="upd">Loading…</span><span id="src"></span></div>
@@ -199,12 +199,8 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
 
   <div id="runInfo" style="display:none"></div><div id="runSetup" style="display:none"></div><div id="staleMsg" class="stale" style="display:none"></div><input type="checkbox" id="autoIn" checked style="display:none">
 
-  <div class="tabs">
-    <button id="tabBot" class="on">Real Bot</button>
-    <button id="tabPap">Simulation</button>
-  </div>
 
-  <section id="vBot" class="hide">
+  <section id="vBot">
     <div class="card">
       <div class="rbtop"><span class="pill stp" id="rbPill"><i></i><span id="rbPillT">LOADING</span></span><span class="pill stale hide" id="rbStalePill">STALE</span><span class="meta" id="rbMode"></span></div>
       <div class="rbdet" id="rbDetail"></div>
@@ -267,37 +263,6 @@ body.isStale #vSig .card,body.isStale #vDet .card{opacity:.45;transition:opacity
     <div class="card"><div class="kpis" id="kpis"></div><div class="meta" id="detNote" style="margin-top:8px"></div></div>
   </section>
 
-  <section id="vPap" class="hide">
-
-    <div class="sim"><b>BROWSER SIMULATION: this is NOT the 24/7 paper bot's actual trades or balance.</b> This page runs its own paper simulation in your browser, recomputed on every page load from the start time below using Binance public price history, so its numbers can differ from the bot's (the bot switched rules and timeframes during its run; this page applies one rule from the start). No exchange keys are used and no orders are placed anywhere. Default: <b>Exit Arrows, long-only</b>, $500 split equally across <b>the live bot's current coins</b> (its universe in bot.json, start time = the bot's start); BUY at the next bar open after a ▲ up arrow (close crosses above the Exit SSL HMA15), sell to cash after a ▼ down arrow. Indicator = Mihkel00 SSL Hybrid, TradingView Pine v6 (WMA ATR smoothing), identical to the bot's ssl_core.py. Fees 0.1% per side.</div>
-    <div class="pload" id="pLoad" role="status" aria-live="polite"><span class="spin"></span><div style="flex:1;min-width:0"><div id="pLoadT">Loading price history…</div><div class="bar"><i id="pLoadB"></i></div></div></div>
-    <div class="card">
-      <div class="simtag">Browser simulation · not the bot's actual trades</div>
-      <div class="phead"><div><div class="meta">Simulated paper balance (marked to the live price)</div><div class="big" id="pBal">–</div><div id="pPnl" class="meta"></div></div>
-      <div class="cd">Next <span id="pCdTf">15m</span> bar close in<br><b id="pCd">–</b><div id="pCdAt"></div></div></div>
-      <div id="pErr" class="err"></div>
-    </div>
-    <div class="card"><div class="legend"><span><i class="dot" style="background:#22c55e"></i>Paper equity since start (USD)</span><span><i class="dot" style="background:#8a93a6"></i>Buy &amp; hold same coins</span></div><div id="ppc"></div></div>
-    <div class="newsig" id="pNew"></div>
-    <div class="card">
-      <div class="pform">
-        <label>Start time (WIB)<input id="pStart" type="datetime-local" step="60"></label>
-        <label>Capital (USD)<input id="pCap" type="number" inputmode="decimal" min="1" step="50"></label>
-        <label class="full" style="grid-column:auto">Trade<select id="pMode"></select></label>
-        <label>Timeframe<div class="pseg" id="pTfSeg"></div></label>
-        <label>Rule<select id="pRule"></select></label>
-        <label style="justify-content:flex-end"><span>&nbsp;</span><button id="pReset">⟲ Reset / restart now</button></label>
-        <div class="full"><div class="chips" id="pChips"></div></div>
-      </div>
-      <div class="meta" id="pSetup" style="margin-top:8px"></div>
-    </div>
-    <div class="card"><div class="h3">Coins · Exit Arrow state</div><div class="tblwrap"><table id="pCoins"><thead><tr><th>Coin<span class="sub">price</span></th><th>Position<span class="sub">Exit SSL</span></th><th>Last arrow<span class="sub">bar open WIB</span></th><th>Value $<span class="sub">P&amp;L</span></th></tr></thead><tbody></tbody></table></div><div class="meta" id="pCoinsNote"></div></div>
-    <div class="card"><div class="h3">Chart · <span id="ppxTitle"></span></div><div class="pseg cseg" id="ppxSeg"></div>
-      <div class="legend"><span><i class="dot" style="background:#3b82f6"></i>Baseline HMA60</span><span><i class="dot" style="background:#a78bfa"></i>Exit SSL HMA15</span><span><i class="dot" style="background:#f59e0b"></i>SSL1</span><span><i class="dot" style="background:#22d3ee"></i>SSL2 (JMA5)</span><span><b class="pos">▲</b>/<b class="neg">▼</b> Exit Arrows · <b style="color:#fde047">B</b>/<b style="color:#fde047">S</b> paper fills</span></div>
-      <div id="ppx"></div><div class="meta" id="ppxNote"></div></div>
-    <div class="card"><div class="h3">Open positions</div><div class="tblwrap"><table id="pPos"><thead><tr><th>Coin</th><th>Entry<span class="sub">time WIB</span></th><th>Now</th><th>Unreal. $<span class="sub">%</span></th><th>Bars</th></tr></thead><tbody></tbody></table></div><div class="meta" id="pPosNote"></div></div>
-    <div class="card"><div class="h3">Trade log</div><div class="tblwrap"><table id="pLog"><thead><tr><th>Time WIB</th><th>Coin</th><th>Side</th><th>Price</th><th>$ P&amp;L<span class="sub">fee</span></th></tr></thead><tbody></tbody></table></div><div class="meta" id="pLogNote"></div></div>
-  </section>
 
   <div class="note">SSL Hybrid (Mihkel00) at default settings: Baseline HMA 60 with ±0.2×EMA60 true-range channel, Exit SSL HMA 15 of highs/lows. Long when close crosses above the upper channel, short when it crosses below the lower one. Signals on bar close, filled at next open, 0.1% fee per side, no leverage. Dollar figures assume your starting capital is fully reinvested (compounded) into each trade. Data: Binance public API (in-browser), auto-refresh every 60 s. <b>Historical backtest and live indicator readout only, not financial advice.</b></div>
 </main>
@@ -426,7 +391,7 @@ window.RB = (function () {
   const wib = ms => num(ms) ? WIBF.format(new Date(ms)) : "–";
   const T = ms => Math.floor(ms / 1000) + 7 * 3600;   // charts render UTC; shift so the axis reads WIB
   const prec = p => !num(p) ? 2 : p < 0.001 ? 10 : p < 1 ? 5 : p < 100 ? 3 : 2;
-  const onBot = () => document.body.classList.contains("onBot");
+  const onBot = () => true;   // this page is Real Bot only
   let D = null, V = null, coin = localStorage.getItem("rbCoin") || null, fCoin = "ALL", fRes = "all", eqC, eqS, bhS, pxC, pxS = {}, lastFetch = 0, loading = false;
   let LP = {}, lpT = 0, lpSrc = "", lpIdx = 0, lpBusy = false, lpErr = "", pend = {}, pendT = 0;
   const TOG = JSON.parse(localStorage.getItem("rbTogs") || '{"chan":true,"base":true,"exit":true,"ssl1":false,"ssl2":false,"arrows":true,"fills":true}');
@@ -743,8 +708,8 @@ const SOURCES = [
   { name: "api.gateio.ws", gate: true, url: "https://api.gateio.ws/api/v4/spot/candlesticks", iv: tf => ({"1w":"7d"}[tf] || tf), max: 1000 },   // last resort if every Binance host is blocked on this network
 ];
 const srcDown = {};   // source index -> ms until which it is skipped (timeout / network error), so one blocked host does not stall every request
-const S = Object.assign({ tf: "1h", dir: "long", ex: "baseline", tab: "pap", coin: "BTC", sort: "since", asc: true, cap: 500, auto: true }, JSON.parse(localStorage.getItem("sslh") || "{}"));
-S.tab = ({ "#pap": "pap" })[location.hash] || "bot";   // the Real bot tab is the default on every load
+const S = Object.assign({ tf: "1h", dir: "long", ex: "baseline", tab: "bot", coin: "BTC", sort: "since", asc: true, cap: 500, auto: true }, JSON.parse(localStorage.getItem("sslh") || "{}"));
+S.tab = "bot";   // Real Bot only; Simulation tab removed
 const SETKEYS = ["tf", "dir", "ex", "cap", "coin"];
 const R = {}; SETKEYS.forEach(k => R[k] = S[k]);   // committed by ▶ Run; everything shown uses R
 const save = () => localStorage.setItem("sslh", JSON.stringify({ tf: S.tf, dir: S.dir, ex: S.ex, tab: S.tab, coin: S.coin, sort: S.sort, asc: S.asc, cap: S.cap, auto: S.auto }));
@@ -842,14 +807,15 @@ seg($("tfSeg"), TFS.map(t => [t, t]), "tf", markStale);
 seg($("dirSeg"), [["long", "Long-only"], ["ls", "Long+Short"]], "dir", markStale);
 seg($("exSeg"), [["baseline", "Baseline exit"], ["exitssl", "Exit SSL"]], "ex", markStale);
 function setTab(t, load = true) {
-  t = t === "pap" ? "pap" : "bot";   // only two tabs: Simulation (pap) and Real Bot (everything else)
+  t = "bot";   // Real Bot only; Simulation tab removed
   S.tab = t; save();
-  [["bot", "tabBot", "vBot"], ["pap", "tabPap", "vPap"]].forEach(([k, b, v]) => { $(b).className = t === k ? "on" : ""; $(v).className = t === k ? "" : "hide"; });
-  document.body.classList.toggle("onPaper", t === "pap"); document.body.classList.toggle("onBot", t === "bot");
+  var vBot = $("vBot"); if (vBot) vBot.className = "";
+  ["vSig", "vDet", "vPap"].forEach(id => { const el = $(id); if (el) { el.className = "hide"; el.hidden = true; } });
+  document.body.classList.remove("onPaper");
+  document.body.classList.add("onBot");
   if (typeof markStale === "function") markStale();
   if (load) ensureView();
 }
-$("tabBot").onclick = () => setTab("bot");   $("tabPap").onclick = () => setTab("pap");
 COINS.forEach(c => { const o = document.createElement("option"); o.value = c; o.textContent = c + "/USDT"; $("coinSel").appendChild(o); });
 function selectCoin(c) {
   if (!COINS.includes(c) && ![...$("coinSel").options].some(o => o.value === c)) { const o = document.createElement("option"); o.value = c; o.textContent = c + "/USDT"; $("coinSel").appendChild(o); }
@@ -859,7 +825,7 @@ $("coinSel").onchange = e => { selectCoin(e.target.value); markStale(); };
 $("symGo").onclick = () => { let v = $("symIn").value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ""); if (!v) return; if (v.endsWith("USDT") && v.length > 4) v = v.slice(0, -4); selectCoin(v); $("symIn").value = ""; markStale(); };
 $("symIn").addEventListener("keydown", e => { if (e.key === "Enter") $("symGo").click(); });
 document.querySelectorAll("#sigT th").forEach(th => th.onclick = () => { const k = th.dataset.k; if (S.sort === k) S.asc = !S.asc; else { S.sort = k; S.asc = k === "coin" || k === "since"; } save(); renderSignals(false); });
-$("refresh").onclick = () => S.tab === "bot" ? RB.load() : refreshAll();
+$("refresh").onclick = () => RB.load();
 $("capIn").value = S.cap;
 $("capIn").addEventListener("change", () => { const v = parseFloat($("capIn").value); S.cap = isFinite(v) && v > 0 ? v : 500; $("capIn").value = S.cap; save(); markStale(); });
 $("capIn").addEventListener("input", () => { const v = parseFloat($("capIn").value); if (isFinite(v) && v > 0 && v !== R.cap) { document.body.classList.add("isStale"); S.cap = v; save(); autoRun(900); } });
@@ -1038,6 +1004,7 @@ const papRun = { key: null, n: 0, total: 0 }, papCache = {};   // sym -> {from, 
 let ppChart = null, ppEq = null, ppBh = null, papLast = null, pxChart = null, pxS = {}, pxCoin = null;
 
 function paperForm() {
+  if (!$("pStart")) return;
   $("pStart").value = P.start; $("pCap").value = P.cap;
   const opts = [["pf", "Portfolio: split capital equally across selected coins"]].concat(COINS.map(c => [c, c + "/USDT only"]));
   $("pMode").innerHTML = opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join(""); $("pMode").value = P.mode;
@@ -1061,12 +1028,14 @@ function paperChanged() {
   else if (sel.join(",") !== P.sel.join(",")) { P.bot = false; P.sel = sel.length ? sel : P.sel; }   // a coin chip changed: custom selection (keep at least one coin)
   savePaper(); paperForm(); markStale();
 }
+if ($("pStart")) {
 ["pStart", "pCap", "pMode", "pRule"].forEach(id => $(id).addEventListener("change", paperChanged));
 $("pChips").addEventListener("change", paperChanged);
 $("pReset").onclick = () => {
   if (!confirm("Restart the paper test from now? The current paper results will be replaced (it is only a simulation).")) return;
   P.start = msToWibInput(Date.now()); P.startSet = true; savePaper(); paperForm(); runNow();
 };
+}
 
 async function paperRows(sym, startMs, tf) {
   const t0 = Math.ceil(startMs / BAR) * BAR, from = t0 - PRE_BARS*BAR, now = Date.now();
@@ -1143,6 +1112,7 @@ function paperCoin(rows, startMs, coinCap, rule) {
   return res;
 }
 function papStatus(txt, frac) {   // the visible loading / progress state of the Simulation tab
+  if (!$("pLoad")) return;
   $("pLoad").classList.toggle("on", !!txt); if (txt) $("pLoadT").textContent = txt;
   $("pLoadB").style.width = Math.round(100 * Math.max(0, Math.min(1, frac || 0))) + "%";
 }
@@ -1262,12 +1232,13 @@ function drawPaperChart(list, o, failed, cc, bal, bh) {
   ppEq.setData(eq); ppBh.setData(bhs); ppChart.timeScale().fitContent();
 }
 function tick() {   // next bar close countdown for the committed paper timeframe
+  if (!$("pCd")) return;
   const TB = PTF_MS[PR.tf] || 9e5; $("pCdTf").textContent = PR.tf;
   const now = Date.now(), nx = Math.ceil((now + 1)/TB)*TB, s = Math.max(0, Math.round((nx - now)/1000));
   $("pCd").textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2, "0")}`; $("pCdAt").textContent = "at " + WIBS.format(new Date(nx)) + " WIB";
   if (s === 0 && S.auto && S.tab === "pap") setTimeout(() => refreshAll(), 4000);   // pick up the new bar a few seconds after the close
 }
-paperForm(); tick(); setInterval(tick, 1000);
+if ($("pStart")) { paperForm(); tick(); setInterval(tick, 1000); }
 
 // ---- Run / refresh
 const sigRun = { key: null, n: 0, total: 0 }, detRun = { key: null, n: 0, total: 0 };
@@ -1336,7 +1307,7 @@ document.querySelectorAll("#rbTfSeg button").forEach(btn => {
 });
 
 selectCoin(S.coin); setTab(S.tab, false); markStale();
-if (S.tab === "bot") RB.show(); else runNow();   // first load: run with the saved (or default) settings so the page is never empty
+RB.show();   // first load: Real Bot only
 setInterval(() => { if (S.auto && !document.hidden) refreshAll(); }, 60000);
 document.addEventListener("visibilitychange", () => { if (S.auto && !document.hidden) refreshAll(); });
 })();
