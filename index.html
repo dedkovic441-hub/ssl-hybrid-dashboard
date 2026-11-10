@@ -398,8 +398,12 @@ if (typeof module !== "undefined") module.exports = { indicator, backtest, metri
 
 <script>
 /* ---- "Real bot" tab ----
-   ./bot.json = the 24/7 paper bot's state, pushed from the box every 10 min (re-fetched here every 60 s, cache-busted). Control changes confirm via the ntfy live stream in a few seconds and are not overwritten by a stale export.
-   Between exports the page marks the bot's exported positions to live Binance prices every 5 s using the bot's own
+   ./bot.json = the 24/7 paper bot's full-history export (pushed every ~10 min, re-fetched here every 60 s, cache-busted).
+   A compact live snapshot (balance, positions with P&L, tf/sides/filter, heartbeat) is polled every 5 s from the
+   box's read-only live_src tunnel and also arrives on the ntfy stream (cmd=live / live_src). Status and live numbers
+   come from that snapshot while the bot is alive; bot.json is the slower history source. The page does not show STALE
+   when a snapshot heartbeat is recent. Control changes confirm via the ntfy live stream in a few seconds.
+   Between snapshots the page marks positions to live Binance prices every 5 s using the bot's own
    formula (paper_bot.marked): value = units*price (long) else value_close; unreal = value - cost; bh = alloc*price/bh_c0.
    It also recomputes the Exit Arrows on bars that closed after the export (same Pine v6 indicator() as the simulation)
    and shows a "pending" hint only; it never simulates trades into the bot's balance. */
@@ -428,7 +432,21 @@ window.RB = (function () {
   try { LIVE_CTL = JSON.parse(sessionStorage.getItem("sslHybrid.liveCtl") || "null"); } catch (e) { LIVE_CTL = null; }
   function saveLive() { try { sessionStorage.setItem("sslHybrid.liveCtl", JSON.stringify(LIVE_CTL || {})); } catch (e) {} }
   function exportMs() { return (D && D.exported_ms) || 0; }
-  function liveFresh() { return !!(LIVE_CTL && (LIVE_CTL.applied_at_ms || 0) >= exportMs()); }
+  const SNAP_FRESH_MS = 45000, SNAP_ALIVE_MS = 15 * 60 * 1000, LIVE_SRC_RE = /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/;
+  let LIVE_SNAP = null, LIVE_SRC = null;
+  try { LIVE_SRC = sessionStorage.getItem("sslHybrid.liveSrc") || null; } catch (e) { LIVE_SRC = null; }
+  function validLiveSrc(u) { return !!(u && LIVE_SRC_RE.test(String(u).replace(/\/$/, ""))); }
+  function setLiveSrc(u) {
+    u = String(u || "").replace(/\/$/, "");
+    if (!validLiveSrc(u)) return false;
+    LIVE_SRC = u;
+    try { sessionStorage.setItem("sslHybrid.liveSrc", u); } catch (e) {}
+    return true;
+  }
+  function snapAgeMs() { return (LIVE_SNAP && LIVE_SNAP.hb_ms) ? (Date.now() - LIVE_SNAP.hb_ms) : Infinity; }
+  function snapFresh() { return snapAgeMs() < SNAP_FRESH_MS; }
+  function snapAlive() { return snapAgeMs() < SNAP_ALIVE_MS; }
+  function liveFresh() { return !!(LIVE_CTL && (LIVE_CTL.applied_at_ms || 0) >= exportMs()) || snapAlive(); }
   function curTf() { return (liveFresh() && LIVE_CTL.tf) || (typeof APPLIED !== "undefined" && APPLIED.tf) || (D && D.tf); }
   function curFilter() { return (liveFresh() && "filter" in LIVE_CTL) ? !!LIVE_CTL.filter : (("filter" in (typeof APPLIED !== "undefined" ? APPLIED : {})) ? !!APPLIED.filter : !!(D && D.entry_filter_2pct)); }
   function curSides() { return (liveFresh() && LIVE_CTL.sides) || (typeof APPLIED !== "undefined" && APPLIED.sides) || ((D && D.sides === "long") ? "long" : "ls"); }
@@ -449,9 +467,12 @@ window.RB = (function () {
       if (!r.ok) throw new Error("HTTP " + r.status + " fetching bot.json");
       const nd = await r.json(), changed = !D || nd.exported_ms !== D.exported_ms;
       D = nd; lastFetch = Date.now(); $("rbErr").textContent = "";
+      if (nd && nd.live_src) setLiveSrc(nd.live_src);
+      if (LIVE_SNAP && snapAlive() && (LIVE_SNAP.hb_ms || 0) >= (nd.exported_ms || 0)) mergeSnapIntoD(LIVE_SNAP);
       if (resetCapBusy()) { if (typeof ctlMark === "function") ctlMark(); }
-      else if (changed) { V = view(); render(); arrows(); } else header();
+      else if (changed || (LIVE_SNAP && snapAlive())) { V = view(); render(); arrows(); } else header();
       if (!lpT) prices();
+      pollLive();
     } catch (e) {
       $("rbErr").textContent = "Could not load the bot's data (" + e.message + "). Showing the last loaded copy" + (D ? "." : ": none yet.");
       if (D) header();
@@ -569,22 +590,29 @@ window.RB = (function () {
   // ---------- render ----------
   function header() {
     if (resetCapBusy()) { if (typeof ctlMark === "function") ctlMark(); return; }
-    const st = (D.status || "STOPPED").toUpperCase(), ageMin = (Date.now() - D.exported_ms) / 60000, stale = ageMin > STALE_MIN;
+    const alive = snapAlive();
+    const st = (alive ? ((LIVE_SNAP && LIVE_SNAP.status) || D.status || "RUNNING") : (D.status || "STOPPED")).toUpperCase();
+    const ageMin = (Date.now() - (D.exported_ms || 0)) / 60000;
+    const stale = !alive && ageMin > STALE_MIN;
     const tf = curTf(), sides = curSides(), filt = curFilter();
-    const startW = (liveFresh() && LIVE_CTL && LIVE_CTL.start_wib) || D.start_wib;
+    const startW = (LIVE_SNAP && alive && LIVE_SNAP.start_wib) || (liveFresh() && LIVE_CTL && LIVE_CTL.start_wib) || D.start_wib;
     const sidesTxt = sides === "long" ? "Long-only" : "Long+Short";
     $("rbPill").className = "pill " + (st === "RUNNING" ? "run" : st === "PAUSED" ? "pau" : "stp"); $("rbPillT").textContent = st;
     $("rbStalePill").classList.toggle("hide", !stale); $("rbStale").classList.toggle("hide", !stale);
-    if (stale) $("rbStale").textContent = `STALE: the last export is ${ageMin >= 120 ? (ageMin / 60).toFixed(1) + " h" : Math.round(ageMin) + " min"} old (expected every 10 min). The box or its publisher may be offline, so the status and positions below may be out of date (prices are still live).`;
+    if (stale) $("rbStale").textContent = `STALE: the last export is ${ageMin >= 120 ? (ageMin / 60).toFixed(1) + " h" : Math.round(ageMin) + " min"} old and no live heartbeat has arrived. The box or its publisher may be offline, so the status and positions below may be out of date (prices are still live).`;
     $("rbMode").innerHTML = `${esc(D.mode)} · <b>${esc(tf)}</b> · <span class="szp sig">${esc(sidesTxt)}</span> · <span class="szp sig">filter ${filt ? "ON +2%/24h" : "OFF"}</span> · <span class="szp sig">${esc(D.signal_timing_text || "Signals: on candle close")}</span> · since ${esc(startW)} WIB` + (D.pool ? ` <span class="szp">Max positions ${D.pool.max_positions} · pool sizing · ${D.pool.slots_used}/${D.pool.max_positions}</span>` : "");
-    let det = st === "RUNNING" ? "Bot alive" + (num(D.hb_age_s) ? `, heartbeat ${Math.round(D.hb_age_s)} s before the export` : "") : (D.status_detail || "");
+    let det = st === "RUNNING" ? "Bot alive" : (D.status_detail || "");
+    if (alive && LIVE_SNAP && LIVE_SNAP.hb_wib) det = "Bot alive, live snapshot " + String(LIVE_SNAP.hb_wib).slice(11, 19) + " WIB";
+    else if (st === "RUNNING" && num(D.hb_age_s)) det = "Bot alive, heartbeat " + Math.round(D.hb_age_s) + " s before the export";
     if (D.paused) det = `Paused since ${D.paused.since_wib} WIB: ${D.paused.reason}. No new entries; exits still follow the rules.`;
-    $("rbDetail").textContent = det + (D.heartbeat_wib ? ` (last heartbeat ${D.heartbeat_wib.slice(11, 19)} WIB)` : "");
-    $("rbExp").textContent = wib(D.exported_ms); $("rbAgo").textContent = `(${ageMin < 1 ? "<1" : Math.round(ageMin)} min ago)`;
-    document.querySelectorAll("#vBot .asof").forEach(e => e.textContent = WIBH.format(new Date(D.positions_as_of_ms || D.exported_ms)));
+    const hbShow = (LIVE_SNAP && LIVE_SNAP.hb_wib) || D.heartbeat_wib;
+    $("rbDetail").textContent = det + (hbShow && det.indexOf(String(hbShow).slice(11, 19)) < 0 ? ` (last heartbeat ${String(hbShow).slice(11, 19)} WIB)` : "");
+    $("rbExp").textContent = wib((LIVE_SNAP && alive && LIVE_SNAP.hb_ms) || D.exported_ms);
+    $("rbAgo").textContent = alive && LIVE_SNAP ? `(live ${snapAgeMs() < 1000 ? "<1" : Math.round(snapAgeMs() / 1000)} s ago)` : `(${ageMin < 1 ? "<1" : Math.round(ageMin)} min ago)`;
+    document.querySelectorAll("#vBot .asof").forEach(e => e.textContent = WIBH.format(new Date((LIVE_SNAP && alive && LIVE_SNAP.hb_ms) || D.positions_as_of_ms || D.exported_ms)));
     const tb = TFMS[tf] || 9e5, now = Date.now(), nx = Math.ceil((now + 1) / tb) * tb, s = Math.round((nx - now) / 1000);
     $("rbTf").textContent = tf; $("rbCd").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; $("rbCdAt").textContent = "at " + WIBH.format(new Date(nx)) + " WIB";
-    if (onBot()) { $("upd").textContent = "Real bot · exported " + wib(D.exported_ms) + " WIB"; $("src").textContent = V && V.live ? "· live P&L" : ""; }
+    if (onBot()) { $("upd").textContent = alive ? ("Real bot · live " + (LIVE_SNAP && LIVE_SNAP.hb_wib ? String(LIVE_SNAP.hb_wib).slice(11, 19) : "") + " WIB") : ("Real bot · exported " + wib(D.exported_ms) + " WIB"); $("src").textContent = V && V.live ? "· live P&L" : ""; }
     liveBadge(); ctlMark();
   }
   function render() { header(); numbers(); equity(); cards(); poolCard(); if (!coin || !D.coins.some(c => c.coin === coin)) coin = D.coins[0] && D.coins[0].coin; coinChart(false); positions(); filters(); trades(); events(); rules(); pendBanner(); }
@@ -600,7 +628,8 @@ window.RB = (function () {
         ["Slots used", D.pool.slots_used + " / " + D.pool.max_positions, D.pool.free_slots ? `next trade ${usd(D.pool.next_trade_size)}` : "full: new arrows skipped", ""]] : []),
       ["Max drawdown", pct(D.max_dd_pct), usd(-Math.abs(D.max_dd_usd || 0)) + " (bar closes)", "neg"], ["Profit factor", num(D.profit_factor) ? D.profit_factor.toFixed(2) : "–", `exposure ${num(D.exposure_pct) ? (D.exposure_pct * 100).toFixed(0) + "%" : "–"}`, ""]];
     $("rbKpis").innerHTML = k.map(([l, v, s, c]) => `<div class="kpi"><div class="l">${esc(l)}</div><div class="v ${c}">${esc(v)}</div><div class="s">${esc(s)}</div></div>`).join("");
-    $("rbAsOf").innerHTML = `Positions, cash, realised P&amp;L and stats as of the export ${esc(wib(D.positions_as_of_ms || D.exported_ms))} WIB (bot's mark then: ${usd(D.balance)}). ` + (V.live ? "Balance, unrealised and buy &amp; hold above are re-marked to live Binance prices every 5 s." : "Live prices not available yet: showing the export's mark.");
+    const asSrc = (LIVE_SNAP && snapAlive()) ? ("live snapshot " + esc(wib(LIVE_SNAP.hb_ms)) + " WIB") : ("export " + esc(wib(D.positions_as_of_ms || D.exported_ms)) + " WIB");
+    $("rbAsOf").innerHTML = `Positions, cash, realised P&amp;L and stats as of the ${asSrc} (bot's mark then: ${usd(D.balance)}). ` + (V.live ? "Balance, unrealised and buy &amp; hold above are re-marked to live Binance prices every 5 s." : "Live prices not available yet: showing the last mark.");
   }
 
   function equity() {
@@ -771,9 +800,10 @@ window.RB = (function () {
   // ---------- timers ----------
   setInterval(() => { if (D && onBot()) header(); }, 1000);
   setInterval(() => { if (onBot() && !document.hidden) prices(); }, PRICE_MS);
+  setInterval(() => { if (onBot() && !document.hidden) pollLive(); }, 5000);
   setInterval(() => { if (onBot() && !document.hidden) load(); }, 60000);
   setInterval(() => { if (D && onBot() && !document.hidden) { const tb = TFMS[D.tf] || 9e5; if (Math.floor(Date.now() / tb) !== Math.floor(pendT / tb) && Date.now() % tb > 20000) arrows(); } }, 10000);   // new bar closed -> re-check arrows
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && onBot()) { prices(); if (Date.now() - lastFetch > 30000) load(); } });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && onBot()) { prices(); pollLive(); if (Date.now() - lastFetch > 30000) load(); } });
 
 
 
@@ -826,8 +856,91 @@ window.RB = (function () {
     });
   }
   let es = null, lastSince = "10m", esRetry = 0;
+  function mergeSnapIntoD(p) {
+    if (!p || typeof p !== "object") return;
+    if (!D) {
+      D = { schema: 1, kind: "ssl-hybrid-paper-bot", paper_only: true, coins: [], open: [], equity: [], trades: [], events: [], mode: "arrow_long", exported_ms: p.hb_ms || Date.now() };
+    }
+    if (p.status) D.status = p.status;
+    if (p.capital != null) D.capital = p.capital;
+    if (p.start_wib) D.start_wib = p.start_wib;
+    if (p.start_ms) D.start_ms = p.start_ms;
+    if (p.tf) D.tf = p.tf;
+    if (p.sides) D.sides = p.sides;
+    if ("filter" in p) D.entry_filter_2pct = !!p.filter;
+    if (p.balance != null) D.balance = p.balance;
+    if (p.pnl != null) D.pnl = p.pnl;
+    if (p.hb_ms) { D.heartbeat_ms = p.hb_ms; D.positions_as_of_ms = p.hb_ms; D.hb_age_s = Math.max(0, (Date.now() - p.hb_ms) / 1000); }
+    if (p.hb_wib) D.heartbeat_wib = p.hb_wib;
+    if (p.slots) {
+      const maxp = p.max_positions || (D.pool && D.pool.max_positions) || 5;
+      const used = p.slots_used != null ? p.slots_used : p.slots.length;
+      D.pool = Object.assign({}, D.pool || {}, {
+        cash: p.cash, slots_used: used, max_positions: maxp,
+        free_slots: Math.max(0, maxp - used),
+        slots: p.slots.map(s => ({ coin: s.coin, side: (s.side || "long").toLowerCase(), cost: s.cost, units: s.units, entry_ms: s.entry_ms, entry: s.entry, tp_px: s.tp_px, sl_px: s.sl_px }))
+      });
+      D.open = p.slots.map(s => ({ coin: s.coin, side: String(s.side || "long").toUpperCase(), cost: s.cost, units: s.units, entry: s.entry, entry_ms: s.entry_ms, tp_px: s.tp_px, sl_px: s.sl_px, price: s.price, pnl: s.pnl }));
+      const held = {};
+      p.slots.forEach(s => { held[s.coin] = s; });
+      (D.coins || []).forEach(c => {
+        const sl = held[c.coin];
+        c.calc = Object.assign({}, c.calc || {});
+        if (sl) {
+          c.calc.side = String(sl.side || "long").toLowerCase();
+          c.calc.units = sl.units; c.calc.cost = sl.cost; c.calc.entry_px = sl.entry;
+          c.calc.tp_px = sl.tp_px; c.calc.sl_px = sl.sl_px; c.calc.collateral = sl.collateral;
+          c.pos = c.calc.side; c.units = sl.units; c.tp_px = sl.tp_px; c.sl_px = sl.sl_px;
+          if (sl.price != null) c.price = sl.price;
+        } else if (c.calc && num(c.calc.units)) {
+          c.calc.units = 0; c.calc.side = null; c.calc.cost = null;
+          c.pos = null; c.units = null;
+        }
+      });
+      p.slots.forEach(sl => {
+        if ((D.coins || []).some(c => c.coin === sl.coin)) return;
+        D.coins = (D.coins || []).concat([{
+          coin: sl.coin, symbol: sl.coin + "USDT", pos: String(sl.side || "long").toLowerCase(),
+          price: sl.price, units: sl.units, tp_px: sl.tp_px, sl_px: sl.sl_px,
+          calc: { side: String(sl.side || "long").toLowerCase(), units: sl.units, cost: sl.cost, entry_px: sl.entry, tp_px: sl.tp_px, sl_px: sl.sl_px, collateral: sl.collateral }
+        }]);
+      });
+    }
+  }
+  function applyLiveSnap(p) {
+    if (!p || typeof p !== "object") return;
+    LIVE_SNAP = p;
+    if (p.live_src) setLiveSrc(p.live_src);
+    applyStatus({
+      tf: p.tf, filter: p.filter, sides: p.sides, capital: p.capital,
+      start_wib: p.start_wib, start_ms: p.start_ms,
+      applied_at_ms: p.hb_ms || p.at_ms || Date.now()
+    });
+    if (resetCapBusy()) return;
+    mergeSnapIntoD(p);
+    try { V = view(); } catch (e) { V = D; }
+    if (D) { header(); if (V) { try { numbers(); positions(); poolCard(); } catch (e2) {} } }
+  }
+  let lpLiveBusy = false, lpLiveErrAt = 0;
+  async function pollLive() {
+    const src = LIVE_SRC || (D && D.live_src);
+    if (!validLiveSrc(src) || lpLiveBusy) return;
+    if (lpLiveErrAt && Date.now() - lpLiveErrAt < 2000) return;
+    lpLiveBusy = true;
+    try {
+      const r = await bustFetch(String(src).replace(/\/$/, "") + "/live.json");
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const p = await r.json();
+      if (p && (p.cmd === "live" || p.hb_ms)) applyLiveSnap(p);
+      lpLiveErrAt = 0;
+    } catch (e) {
+      lpLiveErrAt = Date.now();
+    } finally { lpLiveBusy = false; }
+  }
   function handleRelayPayload(p) {
     if (!p || typeof p !== "object") return;
+    if (p.cmd === "live_src" && p.url) { setLiveSrc(p.url); pollLive(); return; }
+    if (p.cmd === "live") { applyLiveSnap(p); return; }
     if (p.cmd === "status") {
       applyStatus(p);
       const note = p.of === "reset" ? $("rbResetNote") : (p.of === "tf" ? $("rbTfNote") : (p.of === "filter" ? $("rbFltNote") : (p.of === "sides" ? $("rbSidesNote") : null)));
@@ -968,7 +1081,25 @@ window.RB = (function () {
     render() { if (D) { V = view(); render(); } },
     header() { if (D) header(); },
     value() { return ($("rbResetCap") || {}).value; },
-    focused() { return resetCapBusy(); }
+    focused() { return resetCapBusy(); },
+    info() {
+      const pill = $("rbStalePill");
+      return {
+        status: ($("rbPillT") || {}).textContent,
+        stale: !!(pill && !pill.classList.contains("hide")),
+        capital: D && D.capital,
+        start_wib: D && D.start_wib,
+        balance: V && V.balance,
+        tf: curTf(),
+        sides: curSides(),
+        filter: curFilter(),
+        snap_age_ms: isFinite(snapAgeMs()) ? Math.round(snapAgeMs()) : null,
+        live_src: LIVE_SRC || (D && D.live_src) || null,
+        exported_ms: D && D.exported_ms,
+        hb_ms: (LIVE_SNAP && LIVE_SNAP.hb_ms) || (D && D.heartbeat_ms) || null,
+        open: (D && D.open || []).map(o => o.coin + " " + (o.side || ""))
+      };
+    }
   };
 
 
